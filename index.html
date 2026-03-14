@@ -145,6 +145,14 @@
       padding: 12px; border: 1px solid #0d6efd; border-radius: 6px; box-shadow: 0 5px 20px rgba(0,0,0,0.25); z-index: 9999;
       white-space: normal; -webkit-line-clamp: unset; overflow: visible; text-align: left;
     }
+    /* --- HIỆU ỨNG KHOÁ VÀ MỜ KHI SAI TÀI KHOẢN --- */
+    .locked-content {
+      filter: blur(4px);
+      pointer-events: none;
+      user-select: none;
+      opacity: 0.6;
+      transition: all 0.3s ease;
+    }
   </style>
 </head>
 
@@ -416,11 +424,21 @@
         setLoading(false);
         $('#main-app').fadeIn(300);
         $('#txtTeacherName').text("Không có quyền truy cập");
-        $('#main-app').find('input, select, textarea, button').prop('disabled', true);
-        showPopup('error', "⛔ BẠN KHÔNG CÓ QUYỀN KHAI THÁC THÔNG TIN\n\nHãy liên hệ Admin.");
+        
+        // VÔ HIỆU HOÁ TẤT CẢ NGOẠI TRỪ NÚT ĐĂNG XUẤT
+        $('#main-app').find('input, select, textarea, button').not('button[onclick="logoutGoogle()"]').prop('disabled', true);
+        
+        // LÀM MỜ VÀ KHOÁ TƯƠNG TÁC PHẦN NỘI DUNG VÀ CÁC TAB (Trừ phần chứa nút Đăng xuất)
+        $('.tab-content').addClass('locked-content');
+        $('#myTab .nav-item').not(':has(button[onclick="logoutGoogle()"])').addClass('locked-content');
+        
+        showPopup('error', "⛔ BẠN KHÔNG CÓ QUYỀN KHAI THÁC THÔNG TIN\n\nVui lòng nhấn 'Đăng xuất' ở góc trên bên phải để đổi tài khoản hợp lệ.");
         return;
       }
 
+      // NẾU TÀI KHOẢN HỢP LỆ -> MỞ KHOÁ VÀ XOÁ LÀM MỜ (Đề phòng vừa đăng xuất chuyển sang tài khoản đúng)
+      $('.tab-content').removeClass('locked-content');
+      $('#myTab .nav-item').removeClass('locked-content');
       $('#task-pane *').prop('disabled', false); 
       currentUser = res;
       
@@ -463,7 +481,6 @@
         showError("Lỗi hiển thị: " + err.message);
       }
     }
-
     function saveTemp() {
       try {
         if (!currentUser || !currentUser.user || !currentUser.user.sheetName) {
