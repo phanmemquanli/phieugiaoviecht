@@ -338,6 +338,7 @@
 
     // --- BỔ SUNG: LOGIC KIỂM TRA BẢN QUYỀN (TRIAL PERIOD) ---
     function checkTrialPeriod() {
+      return true; // <--- CHỈ CẦN THÊM DÒNG NÀY ĐỂ TẠM TẮT TÍNH NĂNG
       const trialStartDate = new Date(2026, 1, 7); // 07/02/2026 (Tháng 1 là tháng 2)
       const trialDays = 14;
       const trialExpiryDate = new Date(trialStartDate);
@@ -350,7 +351,7 @@
       const trialTitle = document.getElementById('trialTitle');
 
       if (!trialModalElement || !btnTrialOk) return true;
-/*
+
       // KIỂM TRA: NẾU ĐÃ QUÁ HẠN DÙNG THỬ
       if (today > trialExpiryDate) {
         trialTitle.innerText = "Hết hạn dùng thử";
@@ -383,7 +384,7 @@
       trialModal.show();
       return true;
     }
-*/
+
     // --- CẬP NHẬT: KÍCH HOẠT KIỂM TRA TRƯỚC KHI TẢI APP ---
     $(document).ready(function() {
       // 1. Kiểm tra bản quyền trước tiên
