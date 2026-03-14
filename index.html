@@ -425,20 +425,13 @@
         $('#main-app').fadeIn(300);
         $('#txtTeacherName').text("Không có quyền truy cập");
         
-        // VÔ HIỆU HOÁ TẤT CẢ NGOẠI TRỪ NÚT ĐĂNG XUẤT
+        // CHỈ SỬA 1 DÒNG NÀY: Khoá tất cả thẻ input, select, textarea, button NHƯNG loại trừ nút Đăng xuất
         $('#main-app').find('input, select, textarea, button').not('button[onclick="logoutGoogle()"]').prop('disabled', true);
         
-        // LÀM MỜ VÀ KHOÁ TƯƠNG TÁC PHẦN NỘI DUNG VÀ CÁC TAB (Trừ phần chứa nút Đăng xuất)
-        $('.tab-content').addClass('locked-content');
-        $('#myTab .nav-item').not(':has(button[onclick="logoutGoogle()"])').addClass('locked-content');
-        
-        showPopup('error', "⛔ BẠN KHÔNG CÓ QUYỀN KHAI THÁC THÔNG TIN\n\nVui lòng nhấn 'Đăng xuất' ở góc trên bên phải để đổi tài khoản hợp lệ.");
+        showPopup('error', "⛔ BẠN KHÔNG CÓ QUYỀN KHAI THÁC THÔNG TIN\n\nHãy liên hệ Admin.");
         return;
       }
 
-      // NẾU TÀI KHOẢN HỢP LỆ -> MỞ KHOÁ VÀ XOÁ LÀM MỜ (Đề phòng vừa đăng xuất chuyển sang tài khoản đúng)
-      $('.tab-content').removeClass('locked-content');
-      $('#myTab .nav-item').removeClass('locked-content');
       $('#task-pane *').prop('disabled', false); 
       currentUser = res;
       
@@ -481,6 +474,7 @@
         showError("Lỗi hiển thị: " + err.message);
       }
     }
+    
     function saveTemp() {
       try {
         if (!currentUser || !currentUser.user || !currentUser.user.sheetName) {
