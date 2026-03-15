@@ -532,6 +532,10 @@
             tableData.push(["", "", "", "", rs, dt]);
           }
         });
+
+        // BỔ SUNG: Lấy chuỗi kết quả xếp loại
+        let resultString = $('#txtResultDisplay').text() || "";
+
         const payload = {
           sheetName: currentUser.user.sheetName,
           daysOff: $('#inpDaysOff').val() || 0,
@@ -539,7 +543,8 @@
           reason: $('#inpReason').val() || "",
           petition: $('#txtPetition').val() || "",
           report: $('#txtReport').val() || "",
-          tableData: tableData
+          tableData: tableData,
+          resultString: resultString // Cập nhật Bước 1: Gửi kèm Xếp loại
         };
         
         ServerAPI.saveTempData(payload, function(res) {
@@ -563,10 +568,7 @@
     }
 
     function submitReport() {
-      if (typeof isReportUnlocked !== 'undefined' && !isReportUnlocked) {
-         showPopup('warning', "Vui lòng bấm 'Lưu tạm' trước khi nộp!");
-         return;
-      }
+      // 1. ĐÃ XÓA ĐOẠN CHẶN "BẮT BUỘC ẤN LƯU TẠM" ĐỂ NÚT NÀY TỰ ĐỘNG CHẠY BƯỚC 1
 
       const valDays = parseInt($('#inpDaysOff').val()) || 0,
         valReason = $('#inpReason').val().trim();
@@ -594,9 +596,9 @@
       });
       if (!isTableValid) return;
 
-      showPopup('confirm', "Hệ thống sẽ thực hiện quy trình 3 bước: Lưu nhật ký - Cập nhật kết quả - Nộp. Xác nhận?", function() {
+      showPopup('confirm', "Hệ thống sẽ thực hiện TỰ ĐỘNG 3 bước: Lưu nhật ký -> Cập nhật Xếp loại -> Nộp báo cáo. Xác nhận?", function() {
         const monthCurrent = $('#txtTime').text(); 
-        setLoading(true, "🚀 Bước 1: Đang lưu vào nhật ký cá nhân...");
+        setLoading(true, "🚀 Bước 1: Đang TỰ ĐỘNG lưu nhật ký cá nhân...");
 
         let tableData = [];
         $('#taskTable tbody tr').each(function() {
@@ -605,6 +607,9 @@
           }
         });
 
+        // BỔ SUNG: Lấy chuỗi Xếp loại để lưu thẳng ở Bước 1
+        let resultString = $('#txtResultDisplay').text() || "";
+
         const payloadSave = {
           sheetName: currentUser.user.sheetName,
           daysOff: $('#inpDaysOff').val(),
@@ -612,7 +617,8 @@
           reason: valReason,
           petition: valPetition,
           report: valReport,
-          tableData: tableData
+          tableData: tableData,
+          resultString: resultString // Đảm bảo Bước 1 lưu cả kết quả xếp loại
         };
 
         ServerAPI.saveTempData(payloadSave, function(resSave) {
@@ -627,7 +633,7 @@
               daysOff: resLoad.header.daysOff,
               schoolYear: resLoad.header.schoolYear,
               time: resLoad.header.time,
-              result: resLoad.header.result,
+              result: resLoad.header.result, // Lúc này kết quả đã là mới nhất vì Bước 1 đã gánh vác
               bonusPoint: $('#inpBonus').val(),
               petition: resLoad.header.savedPetition,
               report: resLoad.header.savedReport,
@@ -656,7 +662,6 @@
         }, onServerFail);
       });
     }
-
     function onServerFail(err) { showError("Lỗi Server: " + err.message); }
     function showError(msg) { 
         hideLoading();
