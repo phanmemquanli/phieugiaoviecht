@@ -95,7 +95,7 @@
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     @keyframes gradientMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 
-    /* --- 3. BADGE THÔNG TIN (ĐÃ DỜI XUỐNG GÓC DƯỚI BÊN PHẢI) --- */
+    /* --- 3. BADGE THÔNG TIN --- */
     .dev-badge-container {
       position: fixed; bottom: 20px; right: 20px; top: auto; z-index: 99999;
       display: flex; align-items: center; gap: 10px; padding: 6px 16px;
@@ -145,6 +145,7 @@
       padding: 12px; border: 1px solid #0d6efd; border-radius: 6px; box-shadow: 0 5px 20px rgba(0,0,0,0.25); z-index: 9999;
       white-space: normal; -webkit-line-clamp: unset; overflow: visible; text-align: left;
     }
+
     /* --- HIỆU ỨNG KHOÁ VÀ MỜ KHI SAI TÀI KHOẢN --- */
     .locked-content {
       filter: blur(4px);
@@ -352,7 +353,6 @@
 
       if (!trialModalElement || !btnTrialOk) return true;
 
-      // KIỂM TRA: NẾU ĐÃ QUÁ HẠN DÙNG THỬ
       if (today > trialExpiryDate) {
         trialTitle.innerText = "Hết hạn dùng thử";
         trialTitle.style.color = "#dc3545";
@@ -363,7 +363,6 @@
         btnTrialOk.classList.add('btn-danger');
         btnTrialOk.removeAttribute('data-bs-dismiss'); 
         
-        // Thoát về trang chủ Google
         btnTrialOk.onclick = function() {
           window.location.href = "https://www.google.com";
         };
@@ -371,7 +370,6 @@
         const trialModal = new bootstrap.Modal(trialModalElement, { backdrop: 'static', keyboard: false });
         trialModal.show();
         
-        // Ẩn toàn bộ giao diện phía sau
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('main-app').style.display = 'none';
         document.querySelector('.dev-badge-container').style.display = 'none';
@@ -379,21 +377,15 @@
         return false;
       }
 
-      // NẾU CÒN HẠN DÙNG THỬ
       const trialModal = new bootstrap.Modal(trialModalElement, { backdrop: 'static', keyboard: false });
       trialModal.show();
       return true;
     }
 
-    // --- CẬP NHẬT: KÍCH HOẠT KIỂM TRA TRƯỚC KHI TẢI APP ---
     $(document).ready(function() {
-      // 1. Kiểm tra bản quyền trước tiên
       const isTrialValid = checkTrialPeriod();
-      
-      // 2. Nếu đã hết hạn thì dừng lại không tải app nữa
       if (!isTrialValid) return; 
 
-      // 3. Nếu còn hạn thì chạy bình thường như cũ
       const storedEmail = sessionStorage.getItem("PGV_USER_EMAIL");
       if(storedEmail) {
         window.PGV_GLOBAL_EMAIL = storedEmail; 
@@ -494,13 +486,13 @@
 
       if (res.isUnknown) {
         setLoading(false);
+        $('#login-overlay').fadeOut(300);
         $('#main-app').fadeIn(300);
         $('#txtTeacherName').text("Không có quyền truy cập");
         
-        // BỔ SUNG: Áp dụng hiệu ứng mờ nhòe (đã viết sẵn ở thẻ style) cho phần nội dung
+        // Gán CSS mờ nhòe
         $('#main-app .tab-content').addClass('locked-content');
-        
-        // CHỈ SỬA 1 DÒNG NÀY: Khoá tất cả thẻ input, select, textarea, button NHƯNG loại trừ nút Đăng xuất
+        // Khoá nhập liệu nhưng loại trừ nút đăng xuất
         $('#main-app').find('input, select, textarea, button').not('button[onclick="logoutGoogle()"]').prop('disabled', true);
         
         showPopup('error', "⛔ BẠN KHÔNG CÓ QUYỀN KHAI THÁC THÔNG TIN\n\nHãy liên hệ Admin.");
@@ -508,6 +500,7 @@
       }
 
       $('#task-pane *').prop('disabled', false); 
+      $('#main-app .tab-content').removeClass('locked-content'); 
       currentUser = res;
       
       const cbSheet = $('#cbSheetSelect');
@@ -520,6 +513,11 @@
       }
 
       try {
+        // ĐƯA 3 LỆNH NÀY LÊN TRÊN CÙNG ĐỂ TẮT MÀN MỜ
+        setLoading(false);
+        $('#login-overlay').fadeOut(300);
+        $('#main-app').fadeIn(300);
+
         $('#txtTeacherName').text(res.header.name || '');
         $('#txtYear').text(res.header.schoolYear || '');
         $('#txtTime').text(res.header.time || '');
@@ -542,18 +540,21 @@
         if (typeof renderTaskTable === 'function') {
             renderTaskTable(res.table);
         }
-
-        setLoading(false);
-        $('#main-app').fadeIn(300);
       } catch (err) {
         showError("Lỗi hiển thị: " + err.message);
       }
     }
+    
     function saveTemp() {
+      // KHÓA NÚT TRÁNH SPAM CLICK
+      const btnSave = document.querySelector('button[onclick="saveTemp()"]');
+      if(btnSave) btnSave.disabled = true;
+
       try {
         if (!currentUser || !currentUser.user || !currentUser.user.sheetName) {
           showPopup('error', "Dữ liệu chưa tải xong.");
           hideLoading();
+          if(btnSave) btnSave.disabled = false;
           return;
         }
         
@@ -577,6 +578,7 @@
         
         ServerAPI.saveTempData(payload, function(res) {
           hideLoading();
+          if(btnSave) btnSave.disabled = false;
           if(typeof unlockSubmitButton === 'function') unlockSubmitButton();
 
           if (res && res.status === 'success') {
@@ -586,10 +588,12 @@
           }
         }, function(err) {
           hideLoading();
+          if(btnSave) btnSave.disabled = false;
           onServerFail(err);
         });
       } catch (e) {
         hideLoading();
+        if(btnSave) btnSave.disabled = false;
         console.error(e);
         showPopup('error', "Lỗi Client: " + e.message);
       }
@@ -628,6 +632,10 @@
       if (!isTableValid) return;
 
       showPopup('confirm', "Hệ thống sẽ thực hiện quy trình 3 bước: Lưu nhật ký - Cập nhật kết quả - Nộp. Xác nhận?", function() {
+        // KHÓA NÚT TRÁNH SPAM CLICK
+        const btnSubmit = document.getElementById('btnSubmitReport');
+        if(btnSubmit) btnSubmit.disabled = true;
+
         const monthCurrent = $('#txtTime').text(); 
         setLoading(true, "🚀 Bước 1: Đang lưu vào nhật ký cá nhân...");
 
@@ -664,14 +672,17 @@
               bonusPoint: $('#inpBonus').val(),
               petition: resLoad.header.savedPetition,
               report: resLoad.header.savedReport,
-              reason: resLoad.header.savedReason
+              reason: resLoad.header.savedReason,
+              clientEmail: window.PGV_GLOBAL_EMAIL
             };
 
             setLoading(true, "🚀 Bước 3: Thực hiện nộp báo cáo " + finalDataToSubmit.time);
 
             ServerAPI.submitReport(finalDataToSubmit, function(resSubmit) {
               setLoading(false);
-              if (resSubmit.status === 'success') {
+              if(btnSubmit) btnSubmit.disabled = false;
+
+              if (resSubmit && resSubmit.status === 'success') {
                 $('#txtStatus').text("Đã nộp báo cáo");
                 let msgFinal = (resSubmit.isUpdate === true) ? 
                     "Đã nộp lại kết quả mới nhất của " + finalDataToSubmit.time : 
@@ -681,12 +692,21 @@
                 if(typeof forceLockSubmitButton === 'function') forceLockSubmitButton();
 
               } else {
-                showPopup('error', "Lỗi nộp báo cáo: " + resSubmit.message);
+                showPopup('error', "Lỗi nộp báo cáo: " + (resSubmit ? resSubmit.message : "Unknown error"));
               }
-            }, onServerFail);
+            }, function(err) { 
+                if(btnSubmit) btnSubmit.disabled = false;
+                onServerFail(err); 
+            });
 
-          }, onServerFail);
-        }, onServerFail);
+          }, function(err) { 
+              if(btnSubmit) btnSubmit.disabled = false;
+              onServerFail(err); 
+          });
+        }, function(err) { 
+            if(btnSubmit) btnSubmit.disabled = false;
+            onServerFail(err); 
+        });
       });
     }
 
