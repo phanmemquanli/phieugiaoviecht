@@ -95,7 +95,7 @@
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     @keyframes gradientMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 
-    /* --- 3. BADGE THÔNG TIN (ĐÃ DỜI XUỐNG GÓC DƯỚI BÊN PHẢI) --- */
+    /* --- 3. BADGE THÔNG TIN --- */
     .dev-badge-container {
       position: fixed; bottom: 20px; right: 20px; top: auto; z-index: 99999;
       display: flex; align-items: center; gap: 10px; padding: 6px 16px;
@@ -313,13 +313,17 @@
       location.reload(); 
     }
 
+    // --- CẬP NHẬT: Chống lỗi kẹt Loading (Race Condition) ---
+    let loadingTimeout;
     function showLoading(msg) {
         const loader = document.getElementById('loading-overlay');
         const txt = document.getElementById('loading-msg');
         if(txt) txt.innerText = msg;
         if(loader) {
+            clearTimeout(loadingTimeout);
             loader.style.display = 'flex';
-            setTimeout(() => { loader.style.opacity = '1'; }, 10);
+            void loader.offsetWidth; // Ép trình duyệt vẽ lại khung
+            loader.style.opacity = '1';
         }
     }
 
@@ -327,7 +331,10 @@
         const loader = document.getElementById('loading-overlay');
         if(loader) {
             loader.style.opacity = '0';
-            setTimeout(() => { loader.style.display = 'none'; }, 300);
+            clearTimeout(loadingTimeout);
+            loadingTimeout = setTimeout(() => {
+                loader.style.display = 'none';
+            }, 300);
         }
     }
 
@@ -336,64 +343,15 @@
         else hideLoading();
     }
 
-    // --- BỔ SUNG: LOGIC KIỂM TRA BẢN QUYỀN (TRIAL PERIOD) ---
     function checkTrialPeriod() {
-      return true; // <--- CHỈ CẦN THÊM DÒNG NÀY ĐỂ TẠM TẮT TÍNH NĂNG
-      const trialStartDate = new Date(2026, 1, 7); // 07/02/2026 (Tháng 1 là tháng 2)
-      const trialDays = 14;
-      const trialExpiryDate = new Date(trialStartDate);
-      trialExpiryDate.setDate(trialStartDate.getDate() + trialDays);
-      const today = new Date();
-
-      const trialModalElement = document.getElementById('trialModal');
-      const btnTrialOk = document.getElementById('btnTrialOk');
-      const trialMessage = document.getElementById('trialMessage');
-      const trialTitle = document.getElementById('trialTitle');
-
-      if (!trialModalElement || !btnTrialOk) return true;
-
-      // KIỂM TRA: NẾU ĐÃ QUÁ HẠN DÙNG THỬ
-      if (today > trialExpiryDate) {
-        trialTitle.innerText = "Hết hạn dùng thử";
-        trialTitle.style.color = "#dc3545";
-        trialMessage.innerHTML = "Thời gian dùng thử 14 ngày của bạn đã kết thúc.<br>Vui lòng liên hệ Admin để gia hạn phần mềm.";
-        
-        btnTrialOk.innerText = 'Thoát hệ thống';
-        btnTrialOk.classList.remove('btn-primary');
-        btnTrialOk.classList.add('btn-danger');
-        btnTrialOk.removeAttribute('data-bs-dismiss'); 
-        
-        // Thoát về trang chủ Google
-        btnTrialOk.onclick = function() {
-          window.location.href = "https://www.google.com";
-        };
-        
-        const trialModal = new bootstrap.Modal(trialModalElement, { backdrop: 'static', keyboard: false });
-        trialModal.show();
-        
-        // Ẩn toàn bộ giao diện phía sau
-        document.getElementById('login-overlay').style.display = 'none';
-        document.getElementById('main-app').style.display = 'none';
-        document.querySelector('.dev-badge-container').style.display = 'none';
-        
-        return false;
-      }
-
-      // NẾU CÒN HẠN DÙNG THỬ
-      const trialModal = new bootstrap.Modal(trialModalElement, { backdrop: 'static', keyboard: false });
-      trialModal.show();
-      return true;
+      return true; 
+      // ... phần mã check trial phía sau bị bỏ qua an toàn
     }
 
-    // --- CẬP NHẬT: KÍCH HOẠT KIỂM TRA TRƯỚC KHI TẢI APP ---
     $(document).ready(function() {
-      // 1. Kiểm tra bản quyền trước tiên
       const isTrialValid = checkTrialPeriod();
-      
-      // 2. Nếu đã hết hạn thì dừng lại không tải app nữa
       if (!isTrialValid) return; 
 
-      // 3. Nếu còn hạn thì chạy bình thường như cũ
       const storedEmail = sessionStorage.getItem("PGV_USER_EMAIL");
       if(storedEmail) {
         window.PGV_GLOBAL_EMAIL = storedEmail; 
@@ -488,16 +446,23 @@
       ServerAPI.getUserData(null, window.PGV_GLOBAL_EMAIL, onDataLoaded, onServerFail);
     }
 
+    // --- CẬP NHẬT: Cơ chế dọn dẹp (Brute-force cleanup) triệt để lỗi kẹt mờ màn hình ---
     function onDataLoaded(res) {
+      setLoading(false);
+      $('#login-overlay').fadeOut(300);
+      $('.modal-backdrop').remove(); // Đập tan "Bóng ma" Modal
+      $('body').removeClass('modal-open').css('overflow', '');
+      $('#main-app .tab-content').removeClass('locked-content');
+
       if (!res || typeof res !== 'object') { showError("Dữ liệu lỗi."); return; }
       if (res.status === 'error') { showError("Lỗi Hệ Thống: " + res.message); return; }
 
       if (res.isUnknown) {
-        setLoading(false);
         $('#main-app').fadeIn(300);
         $('#txtTeacherName').text("Không có quyền truy cập");
         
-        // CHỈ SỬA 1 DÒNG NÀY: Khoá tất cả thẻ input, select, textarea, button NHƯNG loại trừ nút Đăng xuất
+        // Khóa giao diện
+        $('#main-app .tab-content').addClass('locked-content');
         $('#main-app').find('input, select, textarea, button').not('button[onclick="logoutGoogle()"]').prop('disabled', true);
         
         showPopup('error', "⛔ BẠN KHÔNG CÓ QUYỀN KHAI THÁC THÔNG TIN\n\nHãy liên hệ Admin.");
@@ -517,6 +482,7 @@
       }
 
       try {
+        $('#main-app').fadeIn(300);
         $('#txtTeacherName').text(res.header.name || '');
         $('#txtYear').text(res.header.schoolYear || '');
         $('#txtTime').text(res.header.time || '');
@@ -534,14 +500,14 @@
 
         $('#txtStatus').text(res.header.status || '');
         $('#txtResultDisplay').text(res.header.result || '');
-        khoiTaoBoDemDiem(res.header.result, res.header.bonusPoint);
+        
+        if(typeof khoiTaoBoDemDiem === 'function') {
+            khoiTaoBoDemDiem(res.header.result, res.header.bonusPoint);
+        }
 
         if (typeof renderTaskTable === 'function') {
             renderTaskTable(res.table);
         }
-
-        setLoading(false);
-        $('#main-app').fadeIn(300);
       } catch (err) {
         showError("Lỗi hiển thị: " + err.message);
       }
@@ -694,29 +660,39 @@
         $('#error-box').show().html("<strong>LỖI:</strong><br>" + msg); 
     }
 
+    // --- CẬP NHẬT: Sửa lỗi khởi tạo chồng chéo Modal Bootstrap (Singleton Pattern) ---
+    let globalMsgModalInstance = null;
     function showPopup(type, message, callback) {
-      const myModal = new bootstrap.Modal(document.getElementById('msgModal'));
+      const modalEl = document.getElementById('msgModal');
+      
+      if (!globalMsgModalInstance) {
+          globalMsgModalInstance = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
+      }
+
       const header = $('#msgModalHeader'), title = $('#msgModalTitle'), btnConfirm = $('#btnModalConfirm');
       header.removeClass('bg-danger bg-success bg-primary bg-warning text-dark text-white');
       btnConfirm.hide().off('click');
       $('#msgModalBody').text(message);
+      
       if (type === 'error') { header.addClass('bg-danger text-white'); title.text('❌ LỖI'); } 
       else if (type === 'success') { header.addClass('bg-success text-white'); title.text('✅ THÀNH CÔNG'); } 
       else if (type === 'warning') { header.addClass('bg-warning text-dark'); title.text('⚠️ CẢNH BÁO'); } 
       else if (type === 'confirm') {
         header.addClass('bg-primary text-white'); title.text('❓ XÁC NHẬN');
-        btnConfirm.show().text('Đồng ý nộp').on('click', () => { myModal.hide(); if (callback) callback(); });
+        btnConfirm.show().text('Đồng ý nộp').on('click', () => { globalMsgModalInstance.hide(); if (callback) callback(); });
       }
-      myModal.show();
+      
+      globalMsgModalInstance.show();
     }
 
     function loadSheetList() {
       ServerAPI.getListSheets(function(data) {
-        const cb = $('#cbSheetSelect').empty();
+        const cb = $('#cbSheetSelect');
+        cb.empty();
         if (!data || data.length === 0) { cb.append('<option value="">Không có dữ liệu</option>'); return; }
         cb.append('<option value="">-- Lựa chọn Giáo viên --</option>');
         data.forEach(item => cb.append(`<option value="${item.val}">${item.name}</option>`));
-        cb.on('change', function() {
+        cb.off('change').on('change', function() {
           const selectedSheet = $(this).val();
           if (selectedSheet) {
             setLoading(true, "Đang chuyển dữ liệu...");
