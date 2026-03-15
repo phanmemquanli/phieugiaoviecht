@@ -533,8 +533,10 @@
           }
         });
 
-        // BỔ SUNG: Đọc xếp loại hiện tại đang hiển thị trên màn hình
-        let resultString = $('#txtResultDisplay').text() || "";
+        // BẮT DÍNH KẾT QUẢ HIỂN THỊ TRÊN GIAO DIỆN
+        let resultEl = $('#txtResultDisplay');
+        let resultString = resultEl.is('input, select, textarea') ? resultEl.val() : resultEl.text();
+        resultString = resultString ? resultString.trim() : "";
 
         const payload = {
           sheetName: currentUser.user.sheetName,
@@ -544,7 +546,7 @@
           petition: $('#txtPetition').val() || "",
           report: $('#txtReport').val() || "",
           tableData: tableData,
-          resultString: resultString // Cập nhật để gửi Xếp loại đi
+          resultString: resultString
         };
         
         ServerAPI.saveTempData(payload, function(res) {
@@ -568,6 +570,11 @@
     }
 
     function submitReport() {
+      if (typeof isReportUnlocked !== 'undefined' && !isReportUnlocked) {
+         showPopup('warning', "Vui lòng bấm 'Lưu tạm' trước khi nộp!");
+         return;
+      }
+
       const valDays = parseInt($('#inpDaysOff').val()) || 0,
         valReason = $('#inpReason').val().trim();
 
@@ -605,8 +612,10 @@
           }
         });
 
-        // BỔ SUNG: Đọc xếp loại hiện tại đang hiển thị trên màn hình
-        let resultString = $('#txtResultDisplay').text() || "";
+        // BẮT DÍNH KẾT QUẢ ĐỂ ÉP BƯỚC 1 PHẢI GHI VÀO F6
+        let resultEl = $('#txtResultDisplay');
+        let resultString = resultEl.is('input, select, textarea') ? resultEl.val() : resultEl.text();
+        resultString = resultString ? resultString.trim() : "";
 
         const payloadSave = {
           sheetName: currentUser.user.sheetName,
@@ -616,7 +625,7 @@
           petition: valPetition,
           report: valReport,
           tableData: tableData,
-          resultString: resultString // BẮT BUỘC PHẢI CÓ DÒNG NÀY ĐỂ BƯỚC 1 GHI VÀO F6
+          resultString: resultString // QUAN TRỌNG: Trực tiếp truyền xếp loại cho Server
         };
 
         ServerAPI.saveTempData(payloadSave, function(resSave) {
@@ -631,8 +640,8 @@
               daysOff: resLoad.header.daysOff,
               schoolYear: resLoad.header.schoolYear,
               time: resLoad.header.time,
-              result: resLoad.header.result, 
-              resultString: resultString, // Gửi kèm sang Bước 3 để đồng bộ
+              result: resultString || resLoad.header.result, // Ép ưu tiên kết quả mới nhất
+              resultString: resultString, // Gửi đồng bộ sang Bước 3
               bonusPoint: $('#inpBonus').val(),
               petition: resLoad.header.savedPetition,
               report: resLoad.header.savedReport,
