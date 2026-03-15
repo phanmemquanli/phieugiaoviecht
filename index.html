@@ -516,7 +516,7 @@
       }
     }
     
-    function saveTemp() {
+   function saveTemp() {
       try {
         if (!currentUser || !currentUser.user || !currentUser.user.sheetName) {
           showPopup('error', "Dữ liệu chưa tải xong.");
@@ -533,7 +533,7 @@
           }
         });
 
-        // BỔ SUNG: Lấy chuỗi kết quả xếp loại
+        // BỔ SUNG: Đọc xếp loại hiện tại đang hiển thị trên màn hình
         let resultString = $('#txtResultDisplay').text() || "";
 
         const payload = {
@@ -544,7 +544,7 @@
           petition: $('#txtPetition').val() || "",
           report: $('#txtReport').val() || "",
           tableData: tableData,
-          resultString: resultString // Cập nhật Bước 1: Gửi kèm Xếp loại
+          resultString: resultString // Cập nhật để gửi Xếp loại đi
         };
         
         ServerAPI.saveTempData(payload, function(res) {
@@ -568,8 +568,6 @@
     }
 
     function submitReport() {
-      // 1. ĐÃ XÓA ĐOẠN CHẶN "BẮT BUỘC ẤN LƯU TẠM" ĐỂ NÚT NÀY TỰ ĐỘNG CHẠY BƯỚC 1
-
       const valDays = parseInt($('#inpDaysOff').val()) || 0,
         valReason = $('#inpReason').val().trim();
 
@@ -607,7 +605,7 @@
           }
         });
 
-        // BỔ SUNG: Lấy chuỗi Xếp loại để lưu thẳng ở Bước 1
+        // BỔ SUNG: Đọc xếp loại hiện tại đang hiển thị trên màn hình
         let resultString = $('#txtResultDisplay').text() || "";
 
         const payloadSave = {
@@ -618,7 +616,7 @@
           petition: valPetition,
           report: valReport,
           tableData: tableData,
-          resultString: resultString // Đảm bảo Bước 1 lưu cả kết quả xếp loại
+          resultString: resultString // BẮT BUỘC PHẢI CÓ DÒNG NÀY ĐỂ BƯỚC 1 GHI VÀO F6
         };
 
         ServerAPI.saveTempData(payloadSave, function(resSave) {
@@ -633,18 +631,20 @@
               daysOff: resLoad.header.daysOff,
               schoolYear: resLoad.header.schoolYear,
               time: resLoad.header.time,
-              result: resLoad.header.result, // Lúc này kết quả đã là mới nhất vì Bước 1 đã gánh vác
+              result: resLoad.header.result, 
+              resultString: resultString, // Gửi kèm sang Bước 3 để đồng bộ
               bonusPoint: $('#inpBonus').val(),
               petition: resLoad.header.savedPetition,
               report: resLoad.header.savedReport,
-              reason: resLoad.header.savedReason
+              reason: resLoad.header.savedReason,
+              clientEmail: window.PGV_GLOBAL_EMAIL
             };
 
             setLoading(true, "🚀 Bước 3: Thực hiện nộp báo cáo " + finalDataToSubmit.time);
 
             ServerAPI.submitReport(finalDataToSubmit, function(resSubmit) {
               setLoading(false);
-              if (resSubmit.status === 'success') {
+              if (resSubmit && resSubmit.status === 'success') {
                 $('#txtStatus').text("Đã nộp báo cáo");
                 let msgFinal = (resSubmit.isUpdate === true) ? 
                     "Đã nộp lại kết quả mới nhất của " + finalDataToSubmit.time : 
@@ -652,9 +652,8 @@
                 showPopup('success', msgFinal);
                 
                 if(typeof forceLockSubmitButton === 'function') forceLockSubmitButton();
-
               } else {
-                showPopup('error', "Lỗi nộp báo cáo: " + resSubmit.message);
+                showPopup('error', "Lỗi nộp báo cáo: " + (resSubmit ? resSubmit.message : "Unknown error"));
               }
             }, onServerFail);
 
@@ -662,6 +661,7 @@
         }, onServerFail);
       });
     }
+    
     function onServerFail(err) { showError("Lỗi Server: " + err.message); }
     function showError(msg) { 
         hideLoading();
