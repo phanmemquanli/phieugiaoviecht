@@ -287,15 +287,18 @@
     let isReportLoaded = false; let rawReportData = [];
     let _dataGoc = { diemGoc: 0, mauCau: "" };
     
-    function handleCredentialResponse(response) {
+   function handleCredentialResponse(response) {
       const payload = decodeJwtResponse(response.credential);
       const email = payload.email;
       
+      // 1. Lưu email vào bộ nhớ tạm của trình duyệt
       sessionStorage.setItem("PGV_USER_EMAIL", email);
       window.PGV_GLOBAL_EMAIL = email; 
       
-      document.getElementById('login-overlay').style.display = 'none';
-      initApp(); 
+      // 2. [CẬP NHẬT QUAN TRỌNG]: Tự động tải lại trang (tương đương ấn F5) 
+      // để dọn dẹp sạch sẽ 100% lớp màng mờ bảo mật của thư viện Google Sign-in.
+      // Khi trang tải lại, nó sẽ tự động phát hiện email và gọi hàm initApp().
+      location.reload(); 
     }
 
     function decodeJwtResponse(token) {
