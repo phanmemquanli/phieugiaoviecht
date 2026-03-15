@@ -497,6 +497,9 @@
         $('#main-app').fadeIn(300);
         $('#txtTeacherName').text("Không có quyền truy cập");
         
+        // BỔ SUNG: Áp dụng hiệu ứng mờ nhòe (đã viết sẵn ở thẻ style) cho phần nội dung
+        $('#main-app .tab-content').addClass('locked-content');
+        
         // CHỈ SỬA 1 DÒNG NÀY: Khoá tất cả thẻ input, select, textarea, button NHƯNG loại trừ nút Đăng xuất
         $('#main-app').find('input, select, textarea, button').not('button[onclick="logoutGoogle()"]').prop('disabled', true);
         
@@ -546,7 +549,6 @@
         showError("Lỗi hiển thị: " + err.message);
       }
     }
-    
     function saveTemp() {
       try {
         if (!currentUser || !currentUser.user || !currentUser.user.sheetName) {
