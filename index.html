@@ -361,7 +361,10 @@
         
         return false; // Chặn hệ thống khởi động tiếp
       }
-
+      const trialModal = new bootstrap.Modal(trialModalElement, { backdrop: 'static', keyboard: false });
+      trialModal.show();
+      return true; 
+    }
     $(document).ready(function() {
       const isTrialValid = checkTrialPeriod();
       if (!isTrialValid) return; 
