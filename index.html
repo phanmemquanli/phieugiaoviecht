@@ -14,7 +14,6 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <style>
-    /* --- 1. CẤU HÌNH CHUNG --- */
     body, input, select, textarea, button, table {
       font-family: 'Times New Roman', Times, serif !important;
       font-size: 14px;
@@ -50,7 +49,6 @@
       z-index: -1; pointer-events: none;
     }
 
-    /* --- MÀN HÌNH ĐĂNG NHẬP --- */
     #login-overlay { 
       position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
       background: #f0fdf4; z-index: 999999; 
@@ -63,7 +61,6 @@
     }
     .login-logo { width: 80px; height: 80px; margin-bottom: 15px; }
 
-    /* --- 2. LOADING SPINNER --- */
     #loading-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(255, 255, 255, 0.85);
@@ -95,7 +92,6 @@
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     @keyframes gradientMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 
-    /* --- 3. BADGE THÔNG TIN --- */
     .dev-badge-container {
       position: fixed; bottom: 20px; right: 20px; top: auto; z-index: 99999;
       display: flex; align-items: center; gap: 10px; padding: 6px 16px;
@@ -111,7 +107,6 @@
     .dev-icon { background: rgba(255, 255, 255, 0.25); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.1); flex-shrink: 0; }
     .dev-icon i { font-size: 18px; }
 
-    /* --- CSS CHO CÁC TAB --- */
     #error-box { margin-top: 20px; padding: 10px; background: #ffecec; border: 1px solid #f5c6cb; color: #721c24; border-radius: 5px; max-width: 90%; }
     
     .nav-tabs .nav-link { font-size: 15px; font-weight: bold; color: #495057; background: rgba(255,255,255,0.7); margin-right: 2px; border-radius: 5px 5px 0 0; }
@@ -145,7 +140,7 @@
       padding: 12px; border: 1px solid #0d6efd; border-radius: 6px; box-shadow: 0 5px 20px rgba(0,0,0,0.25); z-index: 9999;
       white-space: normal; -webkit-line-clamp: unset; overflow: visible; text-align: left;
     }
-    /* --- HIỆU ỨNG KHOÁ VÀ MỜ KHI SAI TÀI KHOẢN --- */
+
     .locked-content {
       filter: blur(4px);
       pointer-events: none;
@@ -287,17 +282,13 @@
     let isReportLoaded = false; let rawReportData = [];
     let _dataGoc = { diemGoc: 0, mauCau: "" };
     
-   function handleCredentialResponse(response) {
+    function handleCredentialResponse(response) {
       const payload = decodeJwtResponse(response.credential);
       const email = payload.email;
       
-      // 1. Lưu email vào bộ nhớ tạm của trình duyệt
       sessionStorage.setItem("PGV_USER_EMAIL", email);
       window.PGV_GLOBAL_EMAIL = email; 
       
-      // 2. [CẬP NHẬT QUAN TRỌNG]: Tự động tải lại trang (tương đương ấn F5) 
-      // để dọn dẹp sạch sẽ 100% lớp màng mờ bảo mật của thư viện Google Sign-in.
-      // Khi trang tải lại, nó sẽ tự động phát hiện email và gọi hàm initApp().
       location.reload(); 
     }
 
@@ -316,7 +307,6 @@
       location.reload(); 
     }
 
-    // --- CẬP NHẬT: Chống lỗi kẹt Loading (Race Condition) ---
     let loadingTimeout;
     function showLoading(msg) {
         const loader = document.getElementById('loading-overlay');
@@ -325,7 +315,7 @@
         if(loader) {
             clearTimeout(loadingTimeout);
             loader.style.display = 'flex';
-            void loader.offsetWidth; // Ép trình duyệt vẽ lại khung
+            void loader.offsetWidth; 
             loader.style.opacity = '1';
         }
     }
@@ -348,7 +338,6 @@
 
     function checkTrialPeriod() {
       return true; 
-      // ... phần mã check trial phía sau bị bỏ qua an toàn
     }
 
     $(document).ready(function() {
@@ -449,11 +438,10 @@
       ServerAPI.getUserData(null, window.PGV_GLOBAL_EMAIL, onDataLoaded, onServerFail);
     }
 
-    // --- CẬP NHẬT: Cơ chế dọn dẹp (Brute-force cleanup) triệt để lỗi kẹt mờ màn hình ---
     function onDataLoaded(res) {
       setLoading(false);
       $('#login-overlay').fadeOut(300);
-      $('.modal-backdrop').remove(); // Đập tan "Bóng ma" Modal
+      $('.modal-backdrop').remove(); 
       $('body').removeClass('modal-open').css('overflow', '');
       $('#main-app .tab-content').removeClass('locked-content');
 
@@ -464,7 +452,6 @@
         $('#main-app').fadeIn(300);
         $('#txtTeacherName').text("Không có quyền truy cập");
         
-        // Khóa giao diện
         $('#main-app .tab-content').addClass('locked-content');
         $('#main-app').find('input, select, textarea, button').not('button[onclick="logoutGoogle()"]').prop('disabled', true);
         
@@ -516,135 +503,12 @@
       }
     }
     
-   // LỆNH 1: Bổ sung tham số isSilent (chạy ngầm) và onSuccessCallback (gọi lệnh 2)
-    function saveTemp(isSilent = false, onSuccessCallback = null) {
-      try {
-        if (!currentUser || !currentUser.user || !currentUser.user.sheetName) {
-          if (!isSilent) { showPopup('error', "Dữ liệu chưa tải xong."); hideLoading(); }
-          return;
-        }
-        
-        let tableData = [];
-        $('#taskTable tbody tr').each(function() {
-          if ($(this).find('td').length > 1) {
-            tableData.push(["", "", "", "", $(this).find('.result-select').val(), $(this).find('.date-input').val()]);
-          }
-        });
-
-        let resultEl = $('#txtResultDisplay');
-        let resultString = resultEl.is('input, select, textarea') ? resultEl.val() : resultEl.text();
-        resultString = resultString ? resultString.trim() : "";
-
-        const payload = {
-          sheetName: currentUser.user.sheetName,
-          daysOff: $('#inpDaysOff').val() || 0,
-          bonusPoint: $('#inpBonus').val() || 0,
-          reason: $('#inpReason').val() || "",
-          petition: $('#txtPetition').val() || "",
-          report: $('#txtReport').val() || "",
-          tableData: tableData,
-          resultString: resultString
-        };
-        
-        if (!isSilent) showLoading("✨ Đang ghi nhớ kết quả...");
-
-        ServerAPI.saveTempData(payload, function(res) {
-          if (!isSilent) hideLoading();
-          if(typeof unlockSubmitButton === 'function') unlockSubmitButton();
-
-          if (res && res.status === 'success') {
-            if (!isSilent) showPopup('success', "Đã ghi nhớ kết quả thành công!");
-            
-            // ĐIỂM MẤU CHỐT: Nếu chạy ngầm thành công, tự động kích hoạt Lệnh 2 (Nộp)
-            if (onSuccessCallback) onSuccessCallback();
-            
-          } else {
-            showPopup('error', "Lỗi lưu tạm: " + (res ? res.message : "Unknown error"));
-          }
-        }, function(err) {
-          if (!isSilent) hideLoading();
-          onServerFail(err);
-        });
-      } catch (e) {
-        if (!isSilent) hideLoading();
-        console.error(e);
-        showPopup('error', "Lỗi Client: " + e.message);
-      }
-    }
-
-    // LỆNH 2: Nộp báo cáo
-    function submitReport() {
-      const valDays = parseInt($('#inpDaysOff').val()) || 0,
-        valReason = $('#inpReason').val().trim();
-
-      if (valDays > 0 && valReason === "") {
-        showPopup('warning', `Bạn đã có ${valDays} ngày nghỉ.\nPhải nhập lý do!`, () => setTimeout(() => $('#inpReason').focus(), 500)); return;
-      }
-      const valPetition = $('#txtPetition').val().trim(), valReport = $('#txtReport').val().trim();
-
-      if (valPetition === "" || valReport === "") {
-        showPopup('error', "Thiếu: Ý kiến tham mưu hoặc Báo cáo tóm tắt"); return;
-      }
-
-      let isTableValid = true;
-      $('#taskTable tbody tr').each(function(index) {
-        if ($(this).find('td').length < 2) return;
-        if (!$(this).find('.result-select').val() || !$(this).find('.date-input').val()) {
-          showPopup('error', `Dòng ${index + 1} chưa xong.\nChọn Kết quả và Ngày hoàn thành!`); isTableValid = false; return false;
-        }
-      });
-      if (!isTableValid) return;
-
-      showPopup('confirm', "Hệ thống sẽ đồng bộ nhật ký và nộp báo cáo. Xác nhận?", function() {
-        setLoading(true, "🚀 Bước 1: Đang cập nhật nhật ký cá nhân...");
-
-        // GỌI LỆNH 1 CHẠY NGẦM (True) KÈM THEO HÀM CHẠY LỆNH 2 BÊN TRONG
-        saveTemp(true, function() {
-            
-            // KHỐI MÃ NÀY CHỈ CHẠY KHI LỆNH 1 ĐÃ CHẠY XONG VÀ THÀNH CÔNG 100%
-            setLoading(true, "🚀 Bước 2: Đang ghi vào dữ liệu tổng...");
-            
-            let resultEl = $('#txtResultDisplay');
-            let resultString = resultEl.is('input, select, textarea') ? resultEl.val() : resultEl.text();
-            resultString = resultString ? resultString.trim() : "";
-
-            const finalDataToSubmit = {
-              sheetName: currentUser.user.sheetName,
-              name: currentUser.header.name,
-              schoolYear: currentUser.header.schoolYear,
-              time: currentUser.header.time,
-              daysOff: $('#inpDaysOff').val(),
-              bonusPoint: $('#inpBonus').val(),
-              reason: valReason,
-              petition: valPetition,
-              report: valReport,
-              resultString: resultString,
-              clientEmail: window.PGV_GLOBAL_EMAIL
-            };
-
-            ServerAPI.submitReport(finalDataToSubmit, function(resSubmit) {
-              setLoading(false);
-              if (resSubmit && resSubmit.status === 'success') {
-                $('#txtStatus').text("Đã nộp báo cáo");
-                showPopup('success', resSubmit.message);
-                loadInitialData(); // Tải lại bảng để đảm bảo hiển thị đúng số mới
-                if(typeof forceLockSubmitButton === 'function') forceLockSubmitButton();
-              } else {
-                showPopup('error', "Lỗi nộp báo cáo: " + (resSubmit ? resSubmit.message : "Unknown error"));
-              }
-            }, onServerFail);
-            
-        }); // Kết thúc khối Lệnh 2 nằm trong Lệnh 1
-      });
-    }
-    
     function onServerFail(err) { showError("Lỗi Server: " + err.message); }
     function showError(msg) { 
         hideLoading();
         $('#error-box').show().html("<strong>LỖI:</strong><br>" + msg); 
     }
 
-    // --- CẬP NHẬT: Sửa lỗi khởi tạo chồng chéo Modal Bootstrap (Singleton Pattern) ---
     let globalMsgModalInstance = null;
     function showPopup(type, message, callback) {
       const modalEl = document.getElementById('msgModal');
