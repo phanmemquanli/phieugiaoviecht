@@ -361,10 +361,12 @@
         
         return false; // Chặn hệ thống khởi động tiếp
       }
+      // NẾU VẪN CÒN HẠN (Tùy chọn: Hiện thông báo nhắc nhở rồi cho vào)
       const trialModal = new bootstrap.Modal(trialModalElement, { backdrop: 'static', keyboard: false });
       trialModal.show();
-      return true; 
+      return true; // Cho phép hệ thống tiếp tục khởi động
     }
+    
     $(document).ready(function() {
       const isTrialValid = checkTrialPeriod();
       if (!isTrialValid) return; 
