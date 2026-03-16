@@ -318,9 +318,49 @@
         else hideLoading();
     }
 
-    function checkTrialPeriod() {
-      return true; 
-    }
+     function checkTrialPeriod() {
+    return true; //Nếu // ở đầy là tiếp tục kiểm tra
+      // Ngày bắt đầu: 07/02/2026 (Lưu ý: Tháng trong Javascript đếm từ 0, nên tháng 2 là số 1)
+      const trialStartDate = new Date(2026, 1, 7); 
+      const trialDays = 14; // Số ngày dùng thử
+      
+      const trialExpiryDate = new Date(trialStartDate);
+      trialExpiryDate.setDate(trialStartDate.getDate() + trialDays);
+      const today = new Date();
+
+      const trialModalElement = document.getElementById('trialModal');
+      const btnTrialOk = document.getElementById('btnTrialOk');
+      const trialMessage = document.getElementById('trialMessage');
+      const trialTitle = document.getElementById('trialTitle');
+
+      if (!trialModalElement || !btnTrialOk) return true;
+
+      // NẾU ĐÃ QUÁ HẠN DÙNG THỬ
+      if (today > trialExpiryDate) {
+        trialTitle.innerText = "Hết hạn dùng thử";
+        trialTitle.style.color = "#dc3545"; // Đổi màu đỏ cảnh báo
+        trialMessage.innerHTML = "Thời gian dùng thử 14 ngày của bạn đã kết thúc.<br>Vui lòng liên hệ Admin (Hoàng Ngọc Lâm) để gia hạn phần mềm.";
+        
+        // Biến nút Đồng ý thành nút Thoát
+        btnTrialOk.innerText = 'Thoát hệ thống';
+        btnTrialOk.classList.remove('btn-primary');
+        btnTrialOk.classList.add('btn-danger');
+        btnTrialOk.removeAttribute('data-bs-dismiss'); // Tước quyền đóng cửa sổ
+        
+        btnTrialOk.onclick = function() {
+          window.location.href = "https://www.google.com"; // Điều hướng ra ngoài
+        };
+        
+        // Hiện thông báo khóa màn hình
+        const trialModal = new bootstrap.Modal(trialModalElement, { backdrop: 'static', keyboard: false });
+        trialModal.show();
+        
+        // Ẩn tất cả các giao diện làm việc phía sau
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('main-app').style.display = 'none';
+        
+        return false; // Chặn hệ thống khởi động tiếp
+      }
 
     $(document).ready(function() {
       const isTrialValid = checkTrialPeriod();
