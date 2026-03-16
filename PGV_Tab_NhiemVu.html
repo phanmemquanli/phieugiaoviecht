@@ -213,10 +213,8 @@ function hideLoading() {
     }
 }
 
-/* --- CẬP NHẬT: SỬ DỤNG SERVER API THAY VÌ GOOGLE SCRIPT --- */
-/* --- LỆNH 1: LƯU NHẬT KÝ (Hỗ trợ chạy ngầm khi được Lệnh 2 gọi) --- */
+/* --- LỆNH 1: LƯU NHẬT KÝ (Chạy ngầm xuất sắc khi được Lệnh 2 gọi) --- */
 function handleSaveTemp(isSilent = false, onSuccessCallback = null) {
-    // KHÓA NÚT NGAY LẬP TỨC TRÁNH SPAM CLICK (Chỉ khóa khi người dùng tự ấn Lệnh 1)
     const btnSave = document.querySelector('button[onclick="handleSaveTemp()"]');
     if(btnSave && !isSilent) btnSave.disabled = true;
 
@@ -231,7 +229,6 @@ function handleSaveTemp(isSilent = false, onSuccessCallback = null) {
         }
     });
 
-    // BẮT DÍNH KẾT QUẢ ĐANG HIỂN THỊ
     let resultEl = $('#txtResultDisplay');
     let resultString = resultEl.is('input, select, textarea') ? resultEl.val() : resultEl.text();
     resultString = resultString ? resultString.trim() : "";
@@ -249,19 +246,15 @@ function handleSaveTemp(isSilent = false, onSuccessCallback = null) {
 
     ServerAPI.saveTempData(payload, function(res) {
         if(!isSilent) hideLoading();
-        if(btnSave && !isSilent) btnSave.disabled = false; // Mở khóa nút
+        if(btnSave && !isSilent) btnSave.disabled = false; 
         if(typeof unlockSubmitButton === 'function') unlockSubmitButton();
 
         if (res && res.status === 'success') {
-            // NẾU ẤN ĐỘC LẬP LỆNH 1 THÌ HIỆN THÔNG BÁO BÌNH THƯỜNG
             if (!isSilent) {
                 if (typeof showPopup === 'function') showPopup('success', "Đã ghi nhớ kết quả thành công!");
                 else alert("Đã ghi nhớ kết quả thành công!");
             }
-            
-            // NẾU LỆNH 2 ĐANG GỌI (CHẠY NGẦM), THÌ CHẠY TIẾP LỆNH 2
             if(onSuccessCallback) onSuccessCallback();
-            
         } else {
             let errMsg = res ? res.message : "Unknown error";
             if (typeof showPopup === 'function') showPopup('error', "Lỗi lưu: " + errMsg);
@@ -269,7 +262,7 @@ function handleSaveTemp(isSilent = false, onSuccessCallback = null) {
         }
     }, function(err) {
         if(!isSilent) hideLoading();
-        if(btnSave && !isSilent) btnSave.disabled = false; // Mở khóa khi có lỗi
+        if(btnSave && !isSilent) btnSave.disabled = false; 
         if (typeof showPopup === 'function') showPopup('error', "Lỗi Server: " + err.message);
         else alert("Lỗi Server: " + err.message);
     });
@@ -277,8 +270,6 @@ function handleSaveTemp(isSilent = false, onSuccessCallback = null) {
 
 /* --- LỆNH 2: NỘP BÁO CÁO (Tự động cõng Lệnh 1) --- */
 function submitReport() {
-    // Đã xóa cảnh báo bắt ép ấn Lưu tạm.
-
     const valDays = parseInt($('#inpDaysOff').val()) || 0,
       valReason = $('#inpReason').val().trim();
 
@@ -306,14 +297,13 @@ function submitReport() {
     if (!isTableValid) return;
 
     showPopup('confirm', "Hệ thống sẽ đồng bộ nhật ký và nộp báo cáo. Xác nhận?", function() {
-      // KHÓA NÚT TRÁNH SPAM CLICK
       const btnSubmit = document.getElementById('btnSubmitReport');
       if(btnSubmit) btnSubmit.disabled = true;
 
       const monthCurrent = $('#txtTime').text(); 
       setLoading(true, "🚀 Bước 1: Đang lưu vào nhật ký cá nhân...");
 
-      // ĐIỂM MẤU CHỐT CỦA TƯ DUY: GỌI LỆNH 1 CHẠY NGẦM, THÀNH CÔNG THÌ NỘP LỆNH 2
+      // LỆNH 1 CHẠY NGẦM VÀ LỆNH 2 NỐI ĐUÔI THEO SAU
       handleSaveTemp(true, function() {
           
           setLoading(true, "🚀 Bước 2: Đang ghi vào dữ liệu tổng...");
@@ -322,14 +312,13 @@ function submitReport() {
           let resultString = resultEl.is('input, select, textarea') ? resultEl.val() : resultEl.text();
           resultString = resultString ? resultString.trim() : "";
 
-          // ĐÓNG GÓI DỮ LIỆU CUỐI CÙNG ĐỂ NỘP
           const finalDataToSubmit = {
             sheetName: currentUser.user.sheetName,
             name: currentUser.header.name,
             daysOff: $('#inpDaysOff').val(),
             schoolYear: currentUser.header.schoolYear,
             time: currentUser.header.time,
-            result: resultString, // Gửi kết quả tươi nhất sang Server
+            result: resultString, 
             bonusPoint: $('#inpBonus').val(),
             petition: $('#txtPetition').val(),
             report: $('#txtReport').val(),
@@ -341,7 +330,7 @@ function submitReport() {
 
           ServerAPI.submitReport(finalDataToSubmit, function(resSubmit) {
             setLoading(false);
-            if(btnSubmit) btnSubmit.disabled = false; // Mở khóa nút
+            if(btnSubmit) btnSubmit.disabled = false; 
 
             if (resSubmit && resSubmit.status === 'success') {
               $('#txtStatus').text("Đã nộp báo cáo");
@@ -350,7 +339,7 @@ function submitReport() {
                   "Đã nộp xong kết quả " + finalDataToSubmit.time;
               showPopup('success', msgFinal);
               
-              if(typeof loadInitialData === 'function') loadInitialData(); // Load lại số liệu
+              if(typeof loadInitialData === 'function') loadInitialData(); 
               if(typeof forceLockSubmitButton === 'function') forceLockSubmitButton();
             } else {
               showPopup('error', "Lỗi nộp báo cáo: " + (resSubmit ? resSubmit.message : "Unknown error"));
@@ -360,7 +349,7 @@ function submitReport() {
               if(typeof onServerFail === 'function') onServerFail(err); 
           });
 
-      }); // Kết thúc khối Lệnh 2 nằm trong Lệnh 1
+      });
     });
 }
 
@@ -585,21 +574,15 @@ function formatDateDisplay(dateStr) {
     if (!dateStr) return "";
     let str = String(dateStr).trim();
 
-    // 1. Nếu chuỗi đã đúng định dạng dd/mm/yyyy thì giữ nguyên
-    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) {
-        return str;
-    }
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(str)) return str;
 
-    // 2. Xử lý chuỗi định dạng năm-tháng-ngày (yyyy-mm-dd)
     if (str.length >= 10 && str.charAt(4) === '-') {
          let parts = str.substring(0, 10).split('-');
          if(parts.length === 3) return parts[2] + '/' + parts[1] + '/' + parts[0];
     }
 
-    // 3. MẸO TRỊ LỖI: Xóa bỏ cụm từ "(Giờ Đông Dương)" gây lú cho trình duyệt
     let cleanStr = str.replace(/\(.*?\)/g, '').trim();
     
-    // 4. Chuyển đổi và ép về chuẩn dd/mm/yyyy
     let d = new Date(cleanStr);
     if (!isNaN(d.getTime())) {
         let day = d.getDate();
@@ -608,7 +591,6 @@ function formatDateDisplay(dateStr) {
         return (day < 10 ? '0' + day : day) + '/' + (month < 10 ? '0' + month : month) + '/' + year;
     }
 
-    // Nếu văn bản thường (không phải ngày) thì trả về nguyên vẹn
     return dateStr;
 }
 
@@ -616,6 +598,3 @@ function liveUpdateScore() {
     tinhToanTuDong();
 }
 </script>
-
-
-
