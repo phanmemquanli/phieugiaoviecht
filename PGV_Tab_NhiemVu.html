@@ -214,8 +214,13 @@ function hideLoading() {
 }
 
 /* --- CẬP NHẬT: SỬ DỤNG SERVER API THAY VÌ GOOGLE SCRIPT --- */
-function handleSaveTemp() {
-    showLoading("✨ Đang ghi nhớ kết quả...");
+/* --- LỆNH 1: LƯU NHẬT KÝ (Hỗ trợ chạy ngầm khi được Lệnh 2 gọi) --- */
+function handleSaveTemp(isSilent = false, onSuccessCallback = null) {
+    // KHÓA NÚT NGAY LẬP TỨC TRÁNH SPAM CLICK (Chỉ khóa khi người dùng tự ấn Lệnh 1)
+    const btnSave = document.querySelector('button[onclick="handleSaveTemp()"]');
+    if(btnSave && !isSilent) btnSave.disabled = true;
+
+    if(!isSilent) showLoading("✨ Đang ghi nhớ kết quả...");
     
     let tableData = [];
     $('#taskTable tbody tr').each(function() {
@@ -226,7 +231,10 @@ function handleSaveTemp() {
         }
     });
 
-    let resultString = $('#txtResultDisplay').text() || "";
+    // BẮT DÍNH KẾT QUẢ ĐANG HIỂN THỊ
+    let resultEl = $('#txtResultDisplay');
+    let resultString = resultEl.is('input, select, textarea') ? resultEl.val() : resultEl.text();
+    resultString = resultString ? resultString.trim() : "";
 
     const payload = {
         sheetName: currentUser.user.sheetName,
@@ -240,21 +248,119 @@ function handleSaveTemp() {
     };
 
     ServerAPI.saveTempData(payload, function(res) {
-        hideLoading();
+        if(!isSilent) hideLoading();
+        if(btnSave && !isSilent) btnSave.disabled = false; // Mở khóa nút
         if(typeof unlockSubmitButton === 'function') unlockSubmitButton();
 
         if (res && res.status === 'success') {
-            if (typeof showPopup === 'function') showPopup('success', "Đã ghi nhớ kết quả thành công!");
-            else alert("Đã ghi nhớ kết quả thành công!");
+            // NẾU ẤN ĐỘC LẬP LỆNH 1 THÌ HIỆN THÔNG BÁO BÌNH THƯỜNG
+            if (!isSilent) {
+                if (typeof showPopup === 'function') showPopup('success', "Đã ghi nhớ kết quả thành công!");
+                else alert("Đã ghi nhớ kết quả thành công!");
+            }
+            
+            // NẾU LỆNH 2 ĐANG GỌI (CHẠY NGẦM), THÌ CHẠY TIẾP LỆNH 2
+            if(onSuccessCallback) onSuccessCallback();
+            
         } else {
             let errMsg = res ? res.message : "Unknown error";
             if (typeof showPopup === 'function') showPopup('error', "Lỗi lưu: " + errMsg);
             else alert("Lỗi lưu: " + errMsg);
         }
     }, function(err) {
-        hideLoading();
+        if(!isSilent) hideLoading();
+        if(btnSave && !isSilent) btnSave.disabled = false; // Mở khóa khi có lỗi
         if (typeof showPopup === 'function') showPopup('error', "Lỗi Server: " + err.message);
         else alert("Lỗi Server: " + err.message);
+    });
+}
+
+/* --- LỆNH 2: NỘP BÁO CÁO (Tự động cõng Lệnh 1) --- */
+function submitReport() {
+    // Đã xóa cảnh báo bắt ép ấn Lưu tạm.
+
+    const valDays = parseInt($('#inpDaysOff').val()) || 0,
+      valReason = $('#inpReason').val().trim();
+
+    if (valDays > 0 && valReason === "") {
+      showPopup('warning', `Bạn đã có ${valDays} ngày nghỉ.\nPhải nhập lý do!`, () => setTimeout(() => $('#inpReason').focus(), 500));
+      return;
+    }
+    const valPetition = $('#txtPetition').val().trim(),
+      valReport = $('#txtReport').val().trim();
+
+    if (valPetition === "" || valReport === "") {
+      showPopup('error', "Thiếu: Ý kiến tham mưu hoặc Báo cáo tóm tắt");
+      return;
+    }
+
+    let isTableValid = true;
+    $('#taskTable tbody tr').each(function(index) {
+      if ($(this).find('td').length < 2) return;
+      if (!$(this).find('.result-select').val() || !$(this).find('.date-input').val()) {
+        showPopup('error', `Dòng ${index + 1} chưa xong.\nChọn Kết quả và Ngày hoàn thành!`);
+        isTableValid = false;
+        return false;
+      }
+    });
+    if (!isTableValid) return;
+
+    showPopup('confirm', "Hệ thống sẽ đồng bộ nhật ký và nộp báo cáo. Xác nhận?", function() {
+      // KHÓA NÚT TRÁNH SPAM CLICK
+      const btnSubmit = document.getElementById('btnSubmitReport');
+      if(btnSubmit) btnSubmit.disabled = true;
+
+      const monthCurrent = $('#txtTime').text(); 
+      setLoading(true, "🚀 Bước 1: Đang lưu vào nhật ký cá nhân...");
+
+      // ĐIỂM MẤU CHỐT CỦA TƯ DUY: GỌI LỆNH 1 CHẠY NGẦM, THÀNH CÔNG THÌ NỘP LỆNH 2
+      handleSaveTemp(true, function() {
+          
+          setLoading(true, "🚀 Bước 2: Đang ghi vào dữ liệu tổng...");
+
+          let resultEl = $('#txtResultDisplay');
+          let resultString = resultEl.is('input, select, textarea') ? resultEl.val() : resultEl.text();
+          resultString = resultString ? resultString.trim() : "";
+
+          // ĐÓNG GÓI DỮ LIỆU CUỐI CÙNG ĐỂ NỘP
+          const finalDataToSubmit = {
+            sheetName: currentUser.user.sheetName,
+            name: currentUser.header.name,
+            daysOff: $('#inpDaysOff').val(),
+            schoolYear: currentUser.header.schoolYear,
+            time: currentUser.header.time,
+            result: resultString, // Gửi kết quả tươi nhất sang Server
+            bonusPoint: $('#inpBonus').val(),
+            petition: $('#txtPetition').val(),
+            report: $('#txtReport').val(),
+            reason: $('#inpReason').val(),
+            clientEmail: window.PGV_GLOBAL_EMAIL 
+          };
+
+          setLoading(true, "🚀 Bước 3: Thực hiện nộp báo cáo " + finalDataToSubmit.time);
+
+          ServerAPI.submitReport(finalDataToSubmit, function(resSubmit) {
+            setLoading(false);
+            if(btnSubmit) btnSubmit.disabled = false; // Mở khóa nút
+
+            if (resSubmit && resSubmit.status === 'success') {
+              $('#txtStatus').text("Đã nộp báo cáo");
+              let msgFinal = (resSubmit.isUpdate === true) ? 
+                  "Đã nộp lại kết quả mới nhất của " + finalDataToSubmit.time : 
+                  "Đã nộp xong kết quả " + finalDataToSubmit.time;
+              showPopup('success', msgFinal);
+              
+              if(typeof loadInitialData === 'function') loadInitialData(); // Load lại số liệu
+              if(typeof forceLockSubmitButton === 'function') forceLockSubmitButton();
+            } else {
+              showPopup('error', "Lỗi nộp báo cáo: " + (resSubmit ? resSubmit.message : "Unknown error"));
+            }
+          }, function(err) { 
+              if(btnSubmit) btnSubmit.disabled = false; 
+              if(typeof onServerFail === 'function') onServerFail(err); 
+          });
+
+      }); // Kết thúc khối Lệnh 2 nằm trong Lệnh 1
     });
 }
 
@@ -328,106 +434,6 @@ function renderTaskTable(data) {
 }
 
 function autoResizeInfo(el) { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; }
-
-/* --- CẬP NHẬT: SỬ DỤNG SERVER API --- */
-/* --- CẬP NHẬT: SỬ DỤNG SERVER API (BỔ SUNG TRUYỀN EMAIL NỘP BÁO CÁO) --- */
-function submitReport() {
-    if (typeof isReportUnlocked !== 'undefined' && !isReportUnlocked) {
-       showPopup('warning', "Vui lòng bấm 'Lưu tạm' trước khi nộp!");
-       return;
-    }
-
-    const valDays = parseInt($('#inpDaysOff').val()) || 0,
-      valReason = $('#inpReason').val().trim();
-
-    if (valDays > 0 && valReason === "") {
-      showPopup('warning', `Bạn đã có ${valDays} ngày nghỉ.\nPhải nhập lý do!`, () => setTimeout(() => $('#inpReason').focus(), 500));
-      return;
-    }
-    const valPetition = $('#txtPetition').val().trim(),
-      valReport = $('#txtReport').val().trim();
-
-    if (valPetition === "" || valReport === "") {
-      showPopup('error', "Thiếu: Ý kiến tham mưu hoặc Báo cáo tóm tắt");
-      return;
-    }
-
-    let isTableValid = true;
-    $('#taskTable tbody tr').each(function(index) {
-      if ($(this).find('td').length < 2) return;
-      if (!$(this).find('.result-select').val() || !$(this).find('.date-input').val()) {
-        showPopup('error', `Dòng ${index + 1} chưa xong.\nChọn Kết quả và Ngày hoàn thành!`);
-        isTableValid = false;
-        return false;
-      }
-    });
-    if (!isTableValid) return;
-
-    showPopup('confirm', "Hệ thống sẽ thực hiện quy trình 3 bước: Lưu nhật ký - Cập nhật kết quả - Nộp. Xác nhận?", function() {
-      const monthCurrent = $('#txtTime').text(); 
-      setLoading(true, "🚀 Bước 1: Đang lưu vào nhật ký cá nhân...");
-
-      let tableData = [];
-      $('#taskTable tbody tr').each(function() {
-        if ($(this).find('td').length > 1) {
-          tableData.push(["", "", "", "", $(this).find('.result-select').val(), $(this).find('.date-input').val()]);
-        }
-      });
-
-      const payloadSave = {
-        sheetName: currentUser.user.sheetName,
-        daysOff: $('#inpDaysOff').val(),
-        bonusPoint: $('#inpBonus').val(),
-        reason: valReason,
-        petition: valPetition,
-        report: valReport,
-        tableData: tableData
-      };
-
-      ServerAPI.saveTempData(payloadSave, function(resSave) {
-        setLoading(true, "🚀 Bước 2: Đang cập nhật kết quả mới nhất của " + monthCurrent);
-
-        ServerAPI.getUserData(currentUser.user.sheetName, window.PGV_GLOBAL_EMAIL, function(resLoad) {
-          onDataLoaded(resLoad); 
-
-          // ĐÓNG GÓI DỮ LIỆU CUỐI CÙNG ĐỂ NỘP
-          const finalDataToSubmit = {
-            sheetName: resLoad.user.sheetName,
-            name: resLoad.header.name,
-            daysOff: resLoad.header.daysOff,
-            schoolYear: resLoad.header.schoolYear,
-            time: resLoad.header.time,
-            result: resLoad.header.result,
-            bonusPoint: $('#inpBonus').val(),
-            petition: resLoad.header.savedPetition,
-            report: resLoad.header.savedReport,
-            reason: resLoad.header.savedReason,
-            
-            // --- ĐÂY LÀ DÒNG BỔ SUNG ĐỂ SERVER NHẬN DIỆN EMAIL ---
-            clientEmail: window.PGV_GLOBAL_EMAIL 
-          };
-
-          setLoading(true, "🚀 Bước 3: Thực hiện nộp báo cáo " + finalDataToSubmit.time);
-
-          ServerAPI.submitReport(finalDataToSubmit, function(resSubmit) {
-            setLoading(false);
-            if (resSubmit && resSubmit.status === 'success') {
-              $('#txtStatus').text("Đã nộp báo cáo");
-              let msgFinal = (resSubmit.isUpdate === true) ? 
-                  "Đã nộp lại kết quả mới nhất của " + finalDataToSubmit.time : 
-                  "Đã nộp xong kết quả " + finalDataToSubmit.time;
-              showPopup('success', msgFinal);
-              
-              if(typeof forceLockSubmitButton === 'function') forceLockSubmitButton();
-            } else {
-              showPopup('error', "Lỗi nộp báo cáo: " + (resSubmit ? resSubmit.message : "Unkown error"));
-            }
-          }, function(err) { onServerFail(err); });
-
-        }, function(err) { onServerFail(err); });
-      }, function(err) { onServerFail(err); });
-    });
-}
 
 // --- LOGIC TÍNH ĐIỂM ---
 function tinhToanTuDong() {
