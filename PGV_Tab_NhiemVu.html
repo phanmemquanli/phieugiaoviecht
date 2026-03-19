@@ -92,17 +92,20 @@
       <textarea id="txtPetition" class="form-control border-danger" placeholder="* Ý kiến tham mưu, đề xuất..." style="height: 45px; min-height: 45px; overflow-y: hidden; resize: none; font-size: 13px; border: 1px dashed #dc3545; padding: 3px; border-radius: 4px;" oninput="expandTextarea(this)" onfocus="expandTextarea(this)" onblur="shrinkTextarea(this, '45px')"></textarea>
     </div>
     
-    <div class="col-md-6" style="position: relative;">
-      <textarea id="txtReport" class="form-control border-danger" placeholder="* Báo cáo tóm tắt quá trình thực hiện..." style="height: 45px; min-height: 45px; overflow-y: hidden; resize: none; font-size: 13px; border: 1px dashed #dc3545; padding: 3px 25px 3px 3px; border-radius: 4px;" oninput="expandTextarea(this)" onfocus="expandTextarea(this)" onblur="shrinkTextarea(this, '45px')"></textarea>
+    <div class="col-md-6">
+      <div style="position: relative;">
+        <textarea id="txtReport" class="form-control border-danger" placeholder="* Báo cáo tóm tắt quá trình thực hiện..." style="height: 45px; min-height: 45px; overflow-y: hidden; resize: none; font-size: 13px; border: 1px dashed #dc3545; padding: 3px 30px 3px 3px; border-radius: 4px;" oninput="expandTextarea(this)" onfocus="expandTextarea(this)" onblur="shrinkTextarea(this, '45px')"></textarea>
+        
+        <button class="btn btn-sm text-primary" onclick="document.getElementById('fileReport').click()" style="position: absolute; top: 2px; right: 4px; padding: 0; background: transparent; border: none; z-index: 10;" title="Đính kèm báo cáo">
+          <i class="bi bi-paperclip" style="font-size: 18px;"></i>
+        </button>
+        <input type="file" id="fileReport" multiple style="display:none;" onchange="handleReportUpload(this)">
+      </div>
       
-      <button class="btn btn-sm text-primary" onclick="document.getElementById('fileReport').click()" style="position: absolute; top: 2px; right: 8px; padding: 0; background: transparent; border: none; z-index: 10;" title="Đính kèm báo cáo">
-        <i class="bi bi-paperclip" style="font-size: 18px;"></i>
-      </button>
-      <input type="file" id="fileReport" multiple style="display:none;" onchange="handleReportUpload(this)">
-      
-      <div id="reportAttachments" style="position: absolute; bottom: 4px; right: 8px; display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; z-index: 10;"></div>
+      <div id="reportAttachments" class="mt-1 d-flex gap-1 flex-wrap justify-content-end"></div>
     </div>
-    </div>
+    
+  </div>
 </div>
 
 <div class="card shadow-sm p-0 border-0">
@@ -136,40 +139,25 @@ function showLoading(msg) {
     const loader = document.getElementById('loading-overlay');
     const txt = document.getElementById('loading-msg');
     if(txt) txt.innerText = msg;
-    if(loader) {
-        loader.style.display = 'flex';
-        setTimeout(() => { loader.style.opacity = '1'; }, 10);
-    }
+    if(loader) { loader.style.display = 'flex'; setTimeout(() => { loader.style.opacity = '1'; }, 10); }
 }
 
 function hideLoading() {
     const loader = document.getElementById('loading-overlay');
-    if(loader) {
-        loader.style.opacity = '0';
-        setTimeout(() => { loader.style.display = 'none'; }, 300);
-    }
+    if(loader) { loader.style.opacity = '0'; setTimeout(() => { loader.style.display = 'none'; }, 300); }
 }
 
 function expandTextarea(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
 function shrinkTextarea(el, defaultHeight) { el.style.height = defaultHeight; el.scrollTop = 0; }
 
-
-/* ====================================================================
-   CẬP NHẬT: HÀM MÃ HÓA BỊ THIẾU (Gây ra lỗi quay không ngừng khi lưu)
-==================================================================== */
 function encodeReportText(text, attachments) {
     let res = (text || "").trim();
     if (attachments && attachments.length > 0) {
-        attachments.forEach(a => {
-            res += ` [FILE:${a.name}|${a.url}]`;
-        });
+        attachments.forEach(a => { res += ` [FILE:${a.name}|${a.url}]`; });
     }
     return res;
 }
-/* ==================================================================== */
 
-
-/* --- CẬP NHẬT: SỬA LỖI UNDEFINED KHI TẢI FILE (Tương thích ServerAPI tĩnh) --- */
 function handleReportUpload(input) {
     if (!input.files || input.files.length === 0) return;
     showLoading("⏳ Đang tải lên " + input.files.length + " file đính kèm...");
@@ -183,34 +171,31 @@ function handleReportUpload(input) {
             filesData.push({ fileName: file.name, mimeType: file.type, data: e.target.result.split(',')[1] });
             count++;
             
-            // Đọc xong toàn bộ file thì gửi dữ liệu qua luồng ServerAPI
             if (count === input.files.length) {
                 const payload = { files: filesData };
-                
                 if (typeof ServerAPI.uploadReportFiles === 'function') {
                     ServerAPI.uploadReportFiles(payload, function(res) {
                         hideLoading();
                         input.value = ""; 
-                        
                         if ((res && Array.isArray(res)) || (res && res.status === 'success')) {
                             let uploadedFiles = Array.isArray(res) ? res : res.data;
                             if(!window.currentReportAttachments) window.currentReportAttachments = [];
                             window.currentReportAttachments = window.currentReportAttachments.concat(uploadedFiles);
                             renderReportAttachmentsUI();
-                            showPopup('success', 'Đã đính kèm thành công ' + filesData.length + ' file!');
+                            
+                            // Gọi lưu tự động để kẹp file lên Sheet liền tay
+                            handleSaveTemp(true, function() {
+                                showPopup('success', 'Đã đính kèm thành công ' + filesData.length + ' file!');
+                            });
                         } else {
                             let errMsg = (res && res.message) ? res.message : "Lỗi không xác định từ máy chủ.";
                             showPopup('error', "Lỗi tải file: " + errMsg);
                         }
-                        
                     }, function(err) {
-                        hideLoading();
-                        input.value = "";
-                        showPopup('error', "Lỗi kết nối Server: " + err.message);
+                        hideLoading(); input.value = ""; showPopup('error', "Lỗi kết nối Server: " + err.message);
                     });
                 } else {
-                    hideLoading();
-                    showPopup('error', "Lỗi API: Cần bổ sung hàm uploadReportFiles vào file ketnoi.js!");
+                    hideLoading(); showPopup('error', "Lỗi API: Cần bổ sung hàm uploadReportFiles vào ketnoi.js!");
                 }
             }
         };
@@ -222,25 +207,50 @@ function renderReportAttachmentsUI() {
     let container = $('#reportAttachments');
     container.empty();
     
-    if(!window.currentReportAttachments || window.currentReportAttachments.length === 0) {
-        $('#txtReport').css('padding-bottom', '3px');
-        return;
-    }
+    if(!window.currentReportAttachments || window.currentReportAttachments.length === 0) return;
     
-    $('#txtReport').css('padding-bottom', '25px'); // dãn khoảng không phía dưới để nhường chỗ hiển thị ghim báo cáo
     window.currentReportAttachments.forEach((a, idx) => {
-        let badge = $(`<span class="badge bg-info text-dark shadow-sm" style="font-size: 11px; cursor: pointer; border: 1px solid #90caf9;" title="${a.name}">
+        let badge = $(`<span class="badge bg-info text-dark shadow-sm" style="font-size: 12px; cursor: pointer; border: 1px solid #90caf9; padding: 4px 6px;" title="${a.name}">
             <i class="bi bi-paperclip"></i> Báo cáo ${idx + 1}
-            <i class="bi bi-x text-danger fw-bold ms-1" style="font-size: 13px;" onclick="removeReportAttachment(${idx}); event.stopPropagation();" title="Xóa đính kèm này"></i>
+            <i class="bi bi-x text-danger fw-bold ms-1" style="font-size: 15px;" onclick="removeReportAttachment(${idx}); event.stopPropagation();" title="Xóa đính kèm này khỏi hệ thống"></i>
         </span>`);
         badge.on('click', function() { window.open(a.url, '_blank'); });
         container.append(badge);
     });
 }
 
+// CẬP NHẬT: Logic Xóa file (Đồng thời xóa trên Drive và xóa link ô F2 bằng cách lưu lại)
 function removeReportAttachment(idx) {
-    window.currentReportAttachments.splice(idx, 1);
-    renderReportAttachmentsUI();
+    const confirmMsg = "Thầy/Cô có chắc chắn muốn xóa file đính kèm này khỏi hệ thống (Drive) và ô báo cáo không?";
+    if (typeof showPopup === 'function') {
+        showPopup('confirm', confirmMsg, function() { executeDeleteAttachment(idx); });
+    } else {
+        if (confirm(confirmMsg)) executeDeleteAttachment(idx);
+    }
+}
+
+function executeDeleteAttachment(idx) {
+    let fileToDelete = window.currentReportAttachments[idx];
+    showLoading("⏳ Đang xóa file khỏi hệ thống...");
+    
+    if (typeof ServerAPI.deleteReportFile === 'function') {
+        ServerAPI.deleteReportFile({ url: fileToDelete.url }, function(res) {
+            if (res && res.status === 'success') {
+                window.currentReportAttachments.splice(idx, 1);
+                renderReportAttachmentsUI();
+                
+                // Xóa xong file trên Drive -> Ghi đè cập nhật lại F2 (Loại bỏ link đã xóa)
+                handleSaveTemp(true, function() {
+                    hideLoading();
+                    showPopup('success', 'Đã xóa file đính kèm thành công!');
+                });
+            } else {
+                hideLoading(); showPopup('error', "Lỗi xóa file: " + (res.message || "Không xác định"));
+            }
+        }, function(err) { hideLoading(); showPopup('error', "Lỗi kết nối Server: " + err.message); });
+    } else {
+        hideLoading(); showPopup('error', "Lỗi API: Cần bổ sung hàm deleteReportFile vào ketnoi.js!");
+    }
 }
 
 function handleSaveTemp(isSilent = false, onSuccessCallback = null) {
@@ -279,10 +289,7 @@ function handleSaveTemp(isSilent = false, onSuccessCallback = null) {
         bonusPoint: $('#inpBonus').val() || 0,
         reason: $('#inpReason').val() || "",
         petition: $('#txtPetition').val() || "",
-        
-        // Gọi hàm ghép link file vào nội dung báo cáo (hàm vừa được bổ sung)
         report: encodeReportText($('#txtReport').val() || "", window.currentReportAttachments), 
-        
         tableData: tableData,
         resultString: resultString
     };
@@ -361,9 +368,7 @@ function submitReport() {
             result: resultString, 
             bonusPoint: $('#inpBonus').val(),
             petition: $('#txtPetition').val(),
-            
             report: encodeReportText($('#txtReport').val() || "", window.currentReportAttachments),
-            
             reason: $('#inpReason').val(),
             clientEmail: window.PGV_GLOBAL_EMAIL 
           };
