@@ -555,7 +555,7 @@ return true; //Nếu // ở đầy là tiếp tục kiểm tra
       else if (type === 'warning') { header.addClass('bg-warning text-dark'); title.text('⚠️ CẢNH BÁO'); } 
       else if (type === 'confirm') {
         header.addClass('bg-primary text-white'); title.text('❓ XÁC NHẬN');
-        btnConfirm.show().text('Đồng ý nộp').on('click', () => { globalMsgModalInstance.hide(); if (callback) callback(); });
+        btnConfirm.show().text('Đồng ý').on('click', () => { globalMsgModalInstance.hide(); if (callback) callback(); });
       }
       
       globalMsgModalInstance.show();
