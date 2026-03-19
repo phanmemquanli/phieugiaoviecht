@@ -105,6 +105,10 @@ const ServerAPI = {
     // 13. Tải dữ liệu giao việc ban đầu
     getInitialGiaoViecData: function(onSuccess, onError) {
         this._request("getInitialGiaoViecData", {}, onSuccess, onError);
+    },
+
+    // 14. Tải lên file đính kèm cho báo cáo
+    uploadReportFiles: function(payload, onSuccess, onError) {
+        this._request("uploadReportFiles", { payload: payload }, onSuccess, onError);
     }
 };
-
