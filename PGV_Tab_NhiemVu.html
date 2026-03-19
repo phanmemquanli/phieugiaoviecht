@@ -492,9 +492,26 @@ function updateRowData(input) {
 }
 
 function deleteRow(btn) {
-    $(btn).closest('tr').remove();
-    updateSTT();
-    tinhToanTuDong();
+    const confirmMsg = "Thầy/Cô có chắc chắn muốn xoá nhiệm vụ này không?\n\nLưu ý: Sau khi xoá, cần bấm 'Lưu nhật ký' để đồng bộ dữ liệu lên máy chủ.";
+    
+    // Ưu tiên dùng giao diện popup có sẵn của hệ thống
+    if (typeof showPopup === 'function') {
+        showPopup('confirm', confirmMsg, function() {
+            $(btn).closest('tr').remove();
+            updateSTT();
+            tinhToanTuDong();
+            // Mở khoá nút để người dùng có thể lưu lại thay đổi
+            if(typeof unlockSubmitButton === 'function') unlockSubmitButton();
+        });
+    } else {
+        // Dự phòng bằng hộp thoại mặc định của trình duyệt
+        if (confirm(confirmMsg)) {
+            $(btn).closest('tr').remove();
+            updateSTT();
+            tinhToanTuDong();
+            if(typeof unlockSubmitButton === 'function') unlockSubmitButton();
+        }
+    }
 }
 
 function updateSTT() {
