@@ -153,8 +153,23 @@ function hideLoading() {
 function expandTextarea(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
 function shrinkTextarea(el, defaultHeight) { el.style.height = defaultHeight; el.scrollTop = 0; }
 
-/* --- CẬP NHẬT: LOGIC TẢI FILE ĐÍNH KÈM VÀ HIỂN THỊ TRÊN GIAO DIỆN --- */
-/* --- CẬP NHẬT: SỬA LỖI UNDEFINED KHI TẢI FILE (Đã tương thích với ketnoi.js) --- */
+
+/* ====================================================================
+   CẬP NHẬT: HÀM MÃ HÓA BỊ THIẾU (Gây ra lỗi quay không ngừng khi lưu)
+==================================================================== */
+function encodeReportText(text, attachments) {
+    let res = (text || "").trim();
+    if (attachments && attachments.length > 0) {
+        attachments.forEach(a => {
+            res += ` [FILE:${a.name}|${a.url}]`;
+        });
+    }
+    return res;
+}
+/* ==================================================================== */
+
+
+/* --- CẬP NHẬT: SỬA LỖI UNDEFINED KHI TẢI FILE (Tương thích ServerAPI tĩnh) --- */
 function handleReportUpload(input) {
     if (!input.files || input.files.length === 0) return;
     showLoading("⏳ Đang tải lên " + input.files.length + " file đính kèm...");
@@ -177,20 +192,14 @@ function handleReportUpload(input) {
                         hideLoading();
                         input.value = ""; 
                         
-                        // GIẢI QUYẾT LỖI TẠI ĐÂY:
-                        // Vì ketnoi.js đã tự bóc vỏ res.data, 'res' lúc này là một mảng (Array).
-                        // Vẫn đề phòng trường hợp res chưa bị bóc vỏ (có status === 'success')
                         if ((res && Array.isArray(res)) || (res && res.status === 'success')) {
-                            
                             let uploadedFiles = Array.isArray(res) ? res : res.data;
-                            
                             if(!window.currentReportAttachments) window.currentReportAttachments = [];
                             window.currentReportAttachments = window.currentReportAttachments.concat(uploadedFiles);
                             renderReportAttachmentsUI();
-                            
                             showPopup('success', 'Đã đính kèm thành công ' + filesData.length + ' file!');
                         } else {
-                            let errMsg = res.message ? res.message : "Đã xảy ra lỗi không xác định từ máy chủ.";
+                            let errMsg = (res && res.message) ? res.message : "Lỗi không xác định từ máy chủ.";
                             showPopup('error', "Lỗi tải file: " + errMsg);
                         }
                         
@@ -233,7 +242,6 @@ function removeReportAttachment(idx) {
     window.currentReportAttachments.splice(idx, 1);
     renderReportAttachmentsUI();
 }
-/* ---------------------------------------------------------------------- */
 
 function handleSaveTemp(isSilent = false, onSuccessCallback = null) {
     const btnSave = document.querySelector('button[onclick="handleSaveTemp()"]');
@@ -272,7 +280,7 @@ function handleSaveTemp(isSilent = false, onSuccessCallback = null) {
         reason: $('#inpReason').val() || "",
         petition: $('#txtPetition').val() || "",
         
-        // CẬP NHẬT: Mã hóa text kết hợp cùng mảng file để gửi về Server
+        // Gọi hàm ghép link file vào nội dung báo cáo (hàm vừa được bổ sung)
         report: encodeReportText($('#txtReport').val() || "", window.currentReportAttachments), 
         
         tableData: tableData,
@@ -354,7 +362,6 @@ function submitReport() {
             bonusPoint: $('#inpBonus').val(),
             petition: $('#txtPetition').val(),
             
-            // CẬP NHẬT: Gửi kèm luôn cả text và URL lên file tổng
             report: encodeReportText($('#txtReport').val() || "", window.currentReportAttachments),
             
             reason: $('#inpReason').val(),
