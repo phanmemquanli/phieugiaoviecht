@@ -420,7 +420,7 @@ return true; //Nếu // ở đầy là tiếp tục kiểm tra
         const cacheBuster = "?v=" + new Date().getTime();
         const [resNhiemVu, resGiaoViec, resTongHop, resNghi, resYKien, resBaoCao] = await Promise.all([
             fetch('./PGV_Tab_NhiemVu.html' + cacheBuster),
-            fetch('./PGV_Tab_GiaoViec_Merged.html' + cacheBuster),
+            fetch('./PGV_Tab_GiaoViec.html' + cacheBuster),
             fetch('./PGV_Tab_TongHop.html' + cacheBuster),
             fetch('./PGV_Tab_Nghi.html' + cacheBuster),
             fetch('./PGV_Tab_YKien.html' + cacheBuster),
@@ -428,7 +428,7 @@ return true; //Nếu // ở đầy là tiếp tục kiểm tra
         ]);
 
         if (!resNhiemVu.ok) throw new Error("Không tìm thấy PGV_Tab_NhiemVu.html");
-        if (!resGiaoViec.ok) throw new Error("Không tìm thấy PGV_Tab_GiaoViec_Merged.html");
+        if (!resGiaoViec.ok) throw new Error("Không tìm thấy PGV_Tab_GiaoViec.html");
         if (!resTongHop.ok) throw new Error("Không tìm thấy PGV_Tab_TongHop.html");
         if (!resNghi.ok) throw new Error("Không tìm thấy PGV_Tab_Nghi.html");
         if (!resYKien.ok) throw new Error("Không tìm thấy PGV_Tab_YKien.html");
