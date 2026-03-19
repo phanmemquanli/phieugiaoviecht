@@ -61,3 +61,81 @@
     </div>
   </div>
 </div>
+
+<script>
+  // Hàm dùng chung để giải mã các link đính kèm đang bị ẩn trong chuỗi văn bản
+  if (typeof decodeReportText !== 'function') {
+      window.decodeReportText = function(fullText) {
+          if (!fullText) return { text: "", attachments: [] };
+          let attachments = [];
+          let text = fullText.replace(/\[FILE:(.+?)\|([^\]]+)\]/g, function(match, name, url) {
+              attachments.push({ name: name, url: url });
+              return ""; 
+          });
+          return { text: text.trim(), attachments: attachments };
+      };
+  }
+
+  // --- CẬP NHẬT: Đã chuyển hàm Load từ index.html sang đây ---
+  function loadReportData(forceReload = false) {
+    if (!forceReload && isReportLoaded) return;
+    setLoading(true, "Đang tải dữ liệu báo cáo...");
+    ServerAPI.getReportData(function(res) {
+      setLoading(false);
+      let realData = Array.isArray(res) ? res : res.data;
+      if (!realData) return;
+      rawReportData = realData; 
+      isReportLoaded = true;
+      const years = [...new Set(realData.map(r => r.year))].filter(y => y);
+      const sel = $('#filterYearReport').empty().append('<option value="">--Chọn năm--</option>');
+      years.sort().reverse().forEach(y => sel.append(`<option value="${y}">${y}</option>`));
+      renderReportTable();
+    }, typeof onServerFail !== 'undefined' ? onServerFail : function(e){ console.error(e); hideLoading(); });
+  }
+
+  // --- CẬP NHẬT: Hàm Render ---
+  function renderReportTable() {
+    const year = $('#filterYearReport').val(), tbody = $('#reportSummaryTable tbody').empty();
+    if (!year) {
+      tbody.append('<tr><td colspan="14" class="text-center text-muted py-4">Vui lòng chọn Năm học.</td></tr>');
+      return;
+    }
+    let map = {};
+    
+    rawReportData.forEach(r => {
+      if (String(r.year) !== year || !r.name) return;
+      if (!map[r.name]) map[r.name] = { name: r.name, months: {} };
+      let m = parseInt(String(r.month).match(/(\d{1,2})/)?.[0]);
+      if (m) map[r.name].months[m] = r.content;
+    });
+
+    let stt = 1;
+    const mo = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6];
+    
+    for (const k in map) {
+      const g = map[k];
+      let tr = `<tr><td class="text-center align-middle">${stt++}</td><td class="ps-3 fw-bold align-middle">${g.name}</td>`;
+      
+      mo.forEach(m => {
+        let v = g.months[m], displayVal = '-';
+        if (v && String(v).trim() !== "") {
+          let parsed = decodeReportText(v);
+          let textHtml = parsed.text ? `<div>${parsed.text.replace(/\n/g, '<br>')}</div>` : '';
+          let attachHtml = '';
+          
+          if (parsed.attachments && parsed.attachments.length > 0) {
+              attachHtml = '<div class="mt-2 d-flex flex-wrap gap-1">';
+              parsed.attachments.forEach((a, idx) => {
+                  attachHtml += `<a href="${a.url}" target="_blank" class="badge bg-info text-dark text-decoration-none shadow-sm" style="font-size: 11px; border: 1px solid #90caf9;" title="Xem đính kèm: ${a.name}"><i class="bi bi-paperclip"></i> Báo cáo ${idx + 1}</a>`;
+              });
+              attachHtml += '</div>';
+          }
+          
+          displayVal = `<div class="opinion-cell-wrapper"><div class="opinion-content">${textHtml}${attachHtml}</div></div>`;
+        }
+        tr += `<td class="p-2 align-middle">${displayVal}</td>`;
+      });
+      tbody.append(tr + '</tr>');
+    }
+  }
+</script>
