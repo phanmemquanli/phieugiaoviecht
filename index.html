@@ -264,7 +264,7 @@
     let isReportLoaded = false; let rawReportData = [];
     let _dataGoc = { diemGoc: 0, mauCau: "" };
     
-    /* --- CẬP NHẬT: HÀM BÓC TÁCH FILE ĐÍNH KÈM TỪ TEXT --- */
+    /* --- HÀM BÓC TÁCH FILE ĐÍNH KÈM TỪ TEXT --- */
     function decodeReportText(fullText) {
         if (!fullText) return { text: "", attachments: [] };
         let attachments = [];
@@ -350,33 +350,30 @@
       // NẾU ĐÃ QUÁ HẠN DÙNG THỬ
       if (today > trialExpiryDate) {
         trialTitle.innerText = "Hết hạn dùng thử";
-        trialTitle.style.color = "#dc3545"; // Đổi màu đỏ cảnh báo
+        trialTitle.style.color = "#dc3545"; 
         trialMessage.innerHTML = "Thời gian dùng thử 14 ngày của bạn đã kết thúc.<br>Vui lòng liên hệ Admin (Hoàng Ngọc Lâm) để gia hạn phần mềm.";
         
-        // Biến nút Đồng ý thành nút Thoát
         btnTrialOk.innerText = 'Thoát hệ thống';
         btnTrialOk.classList.remove('btn-primary');
         btnTrialOk.classList.add('btn-danger');
-        btnTrialOk.removeAttribute('data-bs-dismiss'); // Tước quyền đóng cửa sổ
+        btnTrialOk.removeAttribute('data-bs-dismiss'); 
         
         btnTrialOk.onclick = function() {
-          window.location.href = "https://www.google.com"; // Điều hướng ra ngoài
+          window.location.href = "https://www.google.com"; 
         };
         
-        // Hiện thông báo khóa màn hình
         const trialModal = new bootstrap.Modal(trialModalElement, { backdrop: 'static', keyboard: false });
         trialModal.show();
         
-        // Ẩn tất cả các giao diện làm việc phía sau
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('main-app').style.display = 'none';
         
-        return false; // Chặn hệ thống khởi động tiếp
+        return false; 
       }
-      // NẾU VẪN CÒN HẠN (Tùy chọn: Hiện thông báo nhắc nhở rồi cho vào)
+      
       const trialModal = new bootstrap.Modal(trialModalElement, { backdrop: 'static', keyboard: false });
       trialModal.show();
-      return true; // Cho phép hệ thống tiếp tục khởi động
+      return true; 
     }
     
     $(document).ready(function() {
@@ -522,7 +519,17 @@
 
         $('#inpReason').val(res.header.savedReason || "");
         $('#txtPetition').val(res.header.savedPetition || "");
-        $('#txtReport').val(res.header.savedReport || "");
+        
+        /* =========================================================================
+           CẬP NHẬT TRỌNG TÂM: Bóc tách mã ẩn để hiển thị ICON ghim thay vì Link thô
+           ========================================================================= */
+        let reportData = decodeReportText(res.header.savedReport || "");
+        $('#txtReport').val(reportData.text);
+        window.currentReportAttachments = reportData.attachments;
+        if (typeof renderReportAttachmentsUI === 'function') {
+            renderReportAttachmentsUI();
+        }
+        /* ========================================================================= */
 
         if (res.canEditBonus) $('#inpBonus').prop('readonly', false);
         else $('#inpBonus').prop('readonly', true);
@@ -701,6 +708,58 @@
           if (v && String(v).trim() !== "")
             displayVal = `<div class="opinion-cell-wrapper"><div class="opinion-content">${v}</div></div>`;
           tr += `<td class="p-2">${displayVal}</td>`;
+        });
+        tbody.append(tr + '</tr>');
+      }
+    }
+
+    function loadReportData() {
+      if (isReportLoaded) return;
+      setLoading(true);
+      ServerAPI.getReportData(function(res) {
+        setLoading(false);
+        let realData = Array.isArray(res) ? res : res.data;
+        if (!realData) return;
+        rawReportData = realData; isReportLoaded = true;
+        const years = [...new Set(realData.map(r => r.year))].filter(y => y);
+        const sel = $('#filterYearReport').empty().append('<option value="">---Chọn năm---</option>');
+        years.sort().reverse().forEach(y => sel.append(`<option value="${y}">${y}</option>`));
+        renderReportTable();
+      }, onServerFail);
+    }
+
+    function renderReportTable() {
+      const year = $('#filterYearReport').val(), tbody = $('#reportSummaryTable tbody').empty();
+      if (!year) return;
+      let map = {};
+      rawReportData.forEach(r => {
+        if (String(r.year) !== year || !r.name) return;
+        if (!map[r.name]) map[r.name] = { name: r.name, months: {} };
+        let m = parseInt(String(r.month).match(/(\d{1,2})/)?.[0]);
+        if (m) map[r.name].months[m] = r.content;
+      });
+      let stt = 1;
+      const mo = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6];
+      for (const k in map) {
+        const g = map[k];
+        let tr = `<tr><td class="text-center align-middle">${stt++}</td><td class="ps-3 fw-bold align-middle">${g.name}</td>`;
+        mo.forEach(m => {
+          let v = g.months[m], displayVal = '-';
+          if (v && String(v).trim() !== "") {
+            let parsed = decodeReportText(v);
+            let textHtml = parsed.text ? `<div>${parsed.text.replace(/\n/g, '<br>')}</div>` : '';
+            let attachHtml = '';
+            
+            if (parsed.attachments.length > 0) {
+                attachHtml = '<div class="mt-1 d-flex flex-wrap gap-1">';
+                parsed.attachments.forEach((a, idx) => {
+                    attachHtml += `<a href="${a.url}" target="_blank" class="badge bg-info text-dark text-decoration-none shadow-sm" style="font-size: 11px; border: 1px solid #90caf9;" title="${a.name}"><i class="bi bi-paperclip"></i> Báo cáo ${idx + 1}</a>`;
+                });
+                attachHtml += '</div>';
+            }
+            displayVal = `<div class="opinion-cell-wrapper"><div class="opinion-content">${textHtml}${attachHtml}</div></div>`;
+          }
+          tr += `<td class="p-2 align-middle">${displayVal}</td>`;
         });
         tbody.append(tr + '</tr>');
       }
