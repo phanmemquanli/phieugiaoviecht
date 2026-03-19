@@ -231,16 +231,20 @@ function handleSaveTemp(isSilent = false, onSuccessCallback = null) {
         if ($(this).find('td').length > 1) {
             let rs = $(this).find('.result-select').val() || "";
             let dt = $(this).find('.date-input').val() || "";
+            let content = $(this).find('.content-input').val() || "";
+            let deadline = "";
+            let progressType = "";
             
-            // Tách biệt dữ liệu dòng mới và dòng cũ
+            // Ép đọc toàn bộ nội dung của dòng (bất kể cũ hay mới) để đẩy về Server
             if ($(this).attr('data-is-new') === "true") {
-                let content = $(this).find('.content-input').val() || "";
-                let deadline = $(this).find('.deadline-input').val() || "";
-                let progressType = $(this).find('.progress-input').val() || "";
-                tableData.push(["", content, deadline, progressType, rs, dt]);
+                deadline = $(this).find('.deadline-input').val() || "";
+                progressType = $(this).find('.progress-input').val() || "";
             } else {
-                tableData.push(["", "", "", "", rs, dt]); 
+                deadline = $(this).attr('data-deadline') || "";
+                progressType = $(this).attr('data-type') || "";
             }
+
+            tableData.push(["", content, deadline, progressType, rs, dt]);
         }
     });
 
@@ -395,6 +399,9 @@ function renderTaskTable(data) {
         return;
     }
 
+    // Kiểm tra quyền Admin (có quyền chọn user)
+    let isAdmin = (typeof currentUser !== 'undefined' && currentUser.canSelectUser === true);
+
     data.forEach((row, idx) => {
         let stt = idx + 1;
         let content = row[1] ? String(row[1]) : ""; 
@@ -404,10 +411,11 @@ function renderTaskTable(data) {
         
         let rawFinish = row[5];
         let finishDate = formatDateDisplay(rawFinish);
-        
         let formattedDeadline = formatDateDisplay(deadline);
 
-        // Các dòng load lên mặc định không có nút xoá (cột cuối để trống)
+        // Chỉ Admin mới được hiển thị nút Xoá ở dòng load từ server
+        let deleteBtnHtml = isAdmin ? `<button class="btn btn-sm btn-danger py-0 px-2" onclick="deleteRow(this)" title="Xoá dòng (Quyền Admin)">✕</button>` : ``;
+
         let tr = `
         <tr class="task-row" data-deadline="${formattedDeadline}" data-type="${progressType}" data-is-new="false">
             <td class="text-center align-middle stt-cell">${stt}</td>
@@ -426,7 +434,7 @@ function renderTaskTable(data) {
                        onchange="tinhToanTuDong()" onkeyup="tinhToanTuDong()"
                        value="${finishDate}" placeholder="dd/mm/yyyy" style="font-size:13px;">
             </td>
-            <td class="text-center align-middle"></td>
+            <td class="text-center align-middle">${deleteBtnHtml}</td>
         </tr>`;
         tbody.append(tr);
     });
