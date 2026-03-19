@@ -154,6 +154,7 @@ function expandTextarea(el) { el.style.height = 'auto'; el.style.height = el.scr
 function shrinkTextarea(el, defaultHeight) { el.style.height = defaultHeight; el.scrollTop = 0; }
 
 /* --- CẬP NHẬT: LOGIC TẢI FILE ĐÍNH KÈM VÀ HIỂN THỊ TRÊN GIAO DIỆN --- */
+/* --- CẬP NHẬT: SỬA LỖI TẢI FILE BỊ TREO BẰNG CÁCH DÙNG ServerAPI --- */
 function handleReportUpload(input) {
     if (!input.files || input.files.length === 0) return;
     showLoading("⏳ Đang tải lên " + input.files.length + " file đính kèm...");
@@ -167,23 +168,32 @@ function handleReportUpload(input) {
             filesData.push({ fileName: file.name, mimeType: file.type, data: e.target.result.split(',')[1] });
             count++;
             
-            // Đọc xong toàn bộ file thì gửi dữ liệu lên GS
+            // Đọc xong toàn bộ file thì gửi dữ liệu qua luồng ServerAPI
             if (count === input.files.length) {
-                google.script.run.withSuccessHandler(function(res) {
+                const payload = { files: filesData };
+                
+                // Kiểm tra đảm bảo file ketnoi.js đã được bổ sung hàm mới
+                if (typeof ServerAPI.uploadReportFiles === 'function') {
+                    ServerAPI.uploadReportFiles(payload, function(res) {
+                        hideLoading();
+                        input.value = ""; 
+                        if(res && res.status === 'success') {
+                            if(!window.currentReportAttachments) window.currentReportAttachments = [];
+                            window.currentReportAttachments = window.currentReportAttachments.concat(res.data);
+                            renderReportAttachmentsUI();
+                            showPopup('success', 'Đã đính kèm thành công ' + filesData.length + ' file!');
+                        } else {
+                            showPopup('error', "Lỗi tải file: " + (res ? res.message : "Không xác định"));
+                        }
+                    }, function(err) {
+                        hideLoading();
+                        input.value = "";
+                        showPopup('error', "Lỗi kết nối Server: " + err.message);
+                    });
+                } else {
                     hideLoading();
-                    input.value = ""; 
-                    if(res.status === 'success') {
-                        if(!window.currentReportAttachments) window.currentReportAttachments = [];
-                        window.currentReportAttachments = window.currentReportAttachments.concat(res.data);
-                        renderReportAttachmentsUI();
-                    } else {
-                        showPopup('error', "Lỗi tải file: " + res.message);
-                    }
-                }).withFailureHandler(function(err) {
-                    hideLoading();
-                    input.value = "";
-                    showPopup('error', "Lỗi kết nối: " + err.message);
-                }).PGV_uploadReportFiles({files: filesData});
+                    showPopup('error', "Lỗi API: Cần bổ sung hàm uploadReportFiles vào file ketnoi.js!");
+                }
             }
         };
         reader.readAsDataURL(file);
