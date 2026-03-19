@@ -154,7 +154,7 @@ function expandTextarea(el) { el.style.height = 'auto'; el.style.height = el.scr
 function shrinkTextarea(el, defaultHeight) { el.style.height = defaultHeight; el.scrollTop = 0; }
 
 /* --- CẬP NHẬT: LOGIC TẢI FILE ĐÍNH KÈM VÀ HIỂN THỊ TRÊN GIAO DIỆN --- */
-/* --- CẬP NHẬT: SỬA LỖI TẢI FILE BỊ TREO BẰNG CÁCH DÙNG ServerAPI --- */
+/* --- CẬP NHẬT: SỬA LỖI UNDEFINED KHI TẢI FILE (Đã tương thích với ketnoi.js) --- */
 function handleReportUpload(input) {
     if (!input.files || input.files.length === 0) return;
     showLoading("⏳ Đang tải lên " + input.files.length + " file đính kèm...");
@@ -172,19 +172,28 @@ function handleReportUpload(input) {
             if (count === input.files.length) {
                 const payload = { files: filesData };
                 
-                // Kiểm tra đảm bảo file ketnoi.js đã được bổ sung hàm mới
                 if (typeof ServerAPI.uploadReportFiles === 'function') {
                     ServerAPI.uploadReportFiles(payload, function(res) {
                         hideLoading();
                         input.value = ""; 
-                        if(res && res.status === 'success') {
+                        
+                        // GIẢI QUYẾT LỖI TẠI ĐÂY:
+                        // Vì ketnoi.js đã tự bóc vỏ res.data, 'res' lúc này là một mảng (Array).
+                        // Vẫn đề phòng trường hợp res chưa bị bóc vỏ (có status === 'success')
+                        if ((res && Array.isArray(res)) || (res && res.status === 'success')) {
+                            
+                            let uploadedFiles = Array.isArray(res) ? res : res.data;
+                            
                             if(!window.currentReportAttachments) window.currentReportAttachments = [];
-                            window.currentReportAttachments = window.currentReportAttachments.concat(res.data);
+                            window.currentReportAttachments = window.currentReportAttachments.concat(uploadedFiles);
                             renderReportAttachmentsUI();
+                            
                             showPopup('success', 'Đã đính kèm thành công ' + filesData.length + ' file!');
                         } else {
-                            showPopup('error', "Lỗi tải file: " + (res ? res.message : "Không xác định"));
+                            let errMsg = res.message ? res.message : "Đã xảy ra lỗi không xác định từ máy chủ.";
+                            showPopup('error', "Lỗi tải file: " + errMsg);
                         }
+                        
                     }, function(err) {
                         hideLoading();
                         input.value = "";
