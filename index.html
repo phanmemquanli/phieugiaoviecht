@@ -264,6 +264,17 @@
     let isReportLoaded = false; let rawReportData = [];
     let _dataGoc = { diemGoc: 0, mauCau: "" };
     
+    /* --- CẬP NHẬT: HÀM BÓC TÁCH FILE ĐÍNH KÈM TỪ TEXT --- */
+    function decodeReportText(fullText) {
+        if (!fullText) return { text: "", attachments: [] };
+        let attachments = [];
+        let text = fullText.replace(/\[FILE:(.+?)\|([^\]]+)\]/g, function(match, name, url) {
+            attachments.push({ name: name, url: url });
+            return ""; 
+        });
+        return { text: text.trim(), attachments: attachments };
+    }
+
     function handleCredentialResponse(response) {
       const payload = decodeJwtResponse(response.credential);
       const email = payload.email;
@@ -319,7 +330,7 @@
     }
 
      function checkTrialPeriod() {
-return true; //Nếu // ở đầy là tiếp tục kiểm tra
+      return true; //Nếu // ở đầy là tiếp tục kiểm tra
        
       // Ngày bắt đầu: 07/02/2026 (Lưu ý: Tháng trong Javascript đếm từ 0, nên tháng 2 là số 1)
       const trialStartDate = new Date(2026, 1, 7); 
@@ -675,46 +686,6 @@ return true; //Nếu // ở đầy là tiếp tục kiểm tra
       if (!year) return;
       let map = {};
       rawOpinionData.forEach(r => {
-        if (String(r.year) !== year || !r.name) return;
-        if (!map[r.name]) map[r.name] = { name: r.name, months: {} };
-        let m = parseInt(String(r.month).match(/(\d{1,2})/)?.[0]);
-        if (m) map[r.name].months[m] = r.content;
-      });
-      let stt = 1;
-      const mo = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6];
-      for (const k in map) {
-        const g = map[k];
-        let tr = `<tr><td class="text-center">${stt++}</td><td class="ps-3">${g.name}</td>`;
-        mo.forEach(m => {
-          let v = g.months[m], displayVal = '-';
-          if (v && String(v).trim() !== "")
-            displayVal = `<div class="opinion-cell-wrapper"><div class="opinion-content">${v}</div></div>`;
-          tr += `<td class="p-2">${displayVal}</td>`;
-        });
-        tbody.append(tr + '</tr>');
-      }
-    }
-
-    function loadReportData() {
-      if (isReportLoaded) return;
-      setLoading(true);
-      ServerAPI.getReportData(function(res) {
-        setLoading(false);
-        let realData = Array.isArray(res) ? res : res.data;
-        if (!realData) return;
-        rawReportData = realData; isReportLoaded = true;
-        const years = [...new Set(realData.map(r => r.year))].filter(y => y);
-        const sel = $('#filterYearReport').empty().append('<option value="">---Chọn năm---</option>');
-        years.sort().reverse().forEach(y => sel.append(`<option value="${y}">${y}</option>`));
-        renderReportTable();
-      }, onServerFail);
-    }
-
-    function renderReportTable() {
-      const year = $('#filterYearReport').val(), tbody = $('#reportSummaryTable tbody').empty();
-      if (!year) return;
-      let map = {};
-      rawReportData.forEach(r => {
         if (String(r.year) !== year || !r.name) return;
         if (!map[r.name]) map[r.name] = { name: r.name, months: {} };
         let m = parseInt(String(r.month).match(/(\d{1,2})/)?.[0]);
