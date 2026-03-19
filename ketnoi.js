@@ -110,5 +110,10 @@ const ServerAPI = {
     // 14. Tải lên file đính kèm cho báo cáo
     uploadReportFiles: function(payload, onSuccess, onError) {
         this._request("uploadReportFiles", { payload: payload }, onSuccess, onError);
+    },
+
+    // 15. CẬP NHẬT: Xóa file đính kèm cho báo cáo
+    deleteReportFile: function(payload, onSuccess, onError) {
+        this._request("deleteReportFile", { payload: payload }, onSuccess, onError);
     }
 };
