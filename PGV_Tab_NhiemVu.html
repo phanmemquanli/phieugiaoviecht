@@ -221,7 +221,7 @@ function renderReportAttachmentsUI() {
 
 // CẬP NHẬT: Logic Xóa file (Đồng thời xóa trên Drive và xóa link ô F2 bằng cách lưu lại)
 function removeReportAttachment(idx) {
-    const confirmMsg = "Thầy/Cô có chắc chắn muốn xóa file đính kèm này khỏi hệ thống (Drive) và ô báo cáo không?";
+    const confirmMsg = "Thầy/Cô có chắc chắn muốn xóa file đính kèm này khỏi hệ thống báo cáo không?";
     if (typeof showPopup === 'function') {
         showPopup('confirm', confirmMsg, function() { executeDeleteAttachment(idx); });
     } else {
